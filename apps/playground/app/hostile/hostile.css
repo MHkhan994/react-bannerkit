@@ -1,0 +1,179 @@
+/*
+ * A deliberately hostile host application.
+ *
+ * This is what the package has to survive. Everything here is the kind of thing
+ * real applications do and packages get blamed for: a global box-sizing reset, a
+ * global element restyle, an opinionated button, a second Tailwind build with a
+ * different theme, and class names that collide head-on with Tailwind's.
+ *
+ * The page asserts two things at runtime:
+ *   1. Nothing here changes how the editor looks   (host cannot bleed in)
+ *   2. Nothing the editor ships changes any of this (we cannot bleed out)
+ */
+
+/*
+ * A full, conflicting Tailwind build living in the same document.
+ *
+ * Sources are pinned explicitly. Tailwind's automatic detection walks up to the
+ * project root and relies on .gitignore to skip node_modules; when that is not
+ * available it tries to scan the whole workspace and the dev server hangs.
+ */
+@import 'tailwindcss' source(none);
+@source '../';
+
+/* An aggressive global reset, of the sort every app has somewhere. */
+* {
+  box-sizing: content-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 2.1;
+  color: rgb(41 37 36);
+  background-color: rgb(250 250 249);
+}
+
+/* Global element restyling: the classic cause of package styles breaking. */
+h1 {
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: rgb(120 53 15);
+}
+
+h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: rgb(120 53 15);
+}
+
+p {
+  margin-bottom: 18px;
+  max-width: 68ch;
+}
+
+button {
+  font-family: 'Comic Sans MS', cursive;
+  font-size: 21px;
+  border: 4px dashed rgb(217 119 6);
+  border-radius: 0;
+  background-color: rgb(254 243 199);
+  color: rgb(120 53 15);
+  padding: 14px 22px;
+  cursor: help;
+  text-transform: uppercase;
+}
+
+input,
+textarea {
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  border: 3px double rgb(120 53 15);
+  background-color: rgb(255 251 235);
+  padding: 10px;
+}
+
+ul {
+  list-style: square inside;
+  padding-left: 28px;
+}
+
+li {
+  margin-bottom: 10px;
+}
+
+a {
+  color: rgb(180 83 9);
+  text-decoration: underline wavy;
+}
+
+svg {
+  display: inline;
+  border: 2px solid rgb(217 119 6);
+}
+
+/*
+ * Class names that collide with Tailwind's utilities, redefined to mean
+ * something else entirely. If the package's utilities were unprefixed AND
+ * unscoped, these would fight; because the package's are scoped, ours win out
+ * here and theirs win inside the editor.
+ */
+.flex {
+  display: block !important;
+  outline: 3px solid rgb(220 38 38);
+}
+
+.border {
+  border: 6px ridge rgb(220 38 38);
+}
+
+.hidden {
+  display: block;
+}
+
+.fixed {
+  position: static;
+}
+
+/* The host's own layout, kept plain so the page stays readable. */
+.host-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.host-sample {
+  border: 2px solid rgb(214 211 209);
+  background-color: rgb(255 255 255);
+  padding: 20px;
+}
+
+.report {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.report th,
+.report td {
+  border: 1px solid rgb(214 211 209);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.report td.pass {
+  color: rgb(21 128 61);
+  font-weight: 700;
+}
+
+.report td.fail {
+  color: rgb(185 28 28);
+  font-weight: 700;
+}
+
+.verdict-pass {
+  border: 3px solid rgb(21 128 61);
+  background-color: rgb(240 253 244);
+  color: rgb(21 128 61);
+  padding: 14px 18px;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+}
+
+.verdict-fail {
+  border: 3px solid rgb(185 28 28);
+  background-color: rgb(254 242 242);
+  color: rgb(185 28 28);
+  padding: 14px 18px;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+}

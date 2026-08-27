@@ -1,0 +1,658 @@
+/*
+ * The editor's stylesheet.
+ *
+ * Consumers import this once:  import 'react-bannerkit/builder.css'
+ * They do not install Tailwind, configure Tailwind, or know that Tailwind is
+ * involved. Everything here is compiled at package build time and rewritten to
+ * sit under `.bnb-root` - see scripts/build-css.mjs.
+ *
+ * Note what is NOT imported: tailwindcss/preflight.css. Preflight resets the
+ * document, and a package has no business doing that to its host. The scoped
+ * reset further down does the same job inside our own subtree.
+ */
+
+@layer theme, components, utilities, bnb-firewall;
+
+@import 'tailwindcss/theme.css' layer(theme);
+
+/*
+ * `important` is doing specific, necessary work here - it is not a shortcut.
+ *
+ * Cascade layers have a rule that catches every layered design system: for
+ * NORMAL declarations, unlayered CSS beats all layered CSS regardless of
+ * specificity. So a host with a plain `* { box-sizing: content-box }` would
+ * override our `.bnb-root *` reset, and a host with `.flex { display: block
+ * !important }` would override our scoped `.flex` utility. Neither is exotic;
+ * both are in the hostile test page.
+ *
+ * For IMPORTANT declarations the precedence is reversed - layered beats
+ * unlayered - so marking the utilities layer important is what makes the
+ * package genuinely immune to the host's CSS rather than merely usually fine.
+ *
+ * The cost is that a consumer cannot restyle the editor's internals with their
+ * own stylesheet. That is intended: the supported way to theme the editor is the
+ * `--bnb-*` custom properties, which are unaffected by this.
+ */
+@import 'tailwindcss/utilities.css' layer(utilities) source('../') important;
+
+/* ---------------------------------------------------------------- palette */
+
+/*
+ * A complete, self-contained palette. The editor deliberately does not read the
+ * host application's design tokens: it cannot know whether the host is a shadcn
+ * app, and inheriting half a theme looks worse than owning a whole one.
+ *
+ * Consumers who do want the editor to match their brand override these from
+ * their own stylesheet, which wins on load order:
+ *
+ *   .bnb-root { --bnb-primary: oklch(0.55 0.24 264); }
+ */
+.bnb-root {
+  --bnb-background: oklch(1 0 0);
+  --bnb-foreground: oklch(0.19 0.005 285);
+  --bnb-surface: oklch(0.976 0.002 285);
+  --bnb-card: oklch(1 0 0);
+  --bnb-card-foreground: oklch(0.19 0.005 285);
+  --bnb-popover: oklch(1 0 0);
+  --bnb-popover-foreground: oklch(0.19 0.005 285);
+  --bnb-primary: oklch(0.24 0.006 285);
+  --bnb-primary-foreground: oklch(0.985 0 0);
+  --bnb-secondary: oklch(0.968 0.002 285);
+  --bnb-secondary-foreground: oklch(0.24 0.006 285);
+  --bnb-muted: oklch(0.968 0.002 285);
+  --bnb-muted-foreground: oklch(0.55 0.011 285);
+  --bnb-accent: oklch(0.63 0.1 75);
+  --bnb-accent-foreground: oklch(0.985 0 0);
+  --bnb-destructive: oklch(0.58 0.22 27);
+  --bnb-destructive-foreground: oklch(0.985 0 0);
+  --bnb-border: oklch(0.917 0.004 285);
+  --bnb-input: oklch(0.917 0.004 285);
+  --bnb-ring: oklch(0.63 0.1 75);
+
+  /* The tinted ground the canvas sits on, so the banner frame reads as an object. */
+  --bnb-canvas: oklch(0.945 0.003 285);
+
+  --bnb-radius: 0.375rem;
+
+  --bnb-font-ui:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --bnb-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Applied when `theme="dark"`. */
+.bnb-root.bnb-dark {
+  --bnb-background: oklch(0.19 0.005 285);
+  --bnb-foreground: oklch(0.985 0 0);
+  --bnb-surface: oklch(0.23 0.006 285);
+  --bnb-card: oklch(0.22 0.006 285);
+  --bnb-card-foreground: oklch(0.985 0 0);
+  --bnb-popover: oklch(0.22 0.006 285);
+  --bnb-popover-foreground: oklch(0.985 0 0);
+  --bnb-primary: oklch(0.92 0.004 285);
+  --bnb-primary-foreground: oklch(0.21 0.006 285);
+  --bnb-secondary: oklch(0.28 0.006 285);
+  --bnb-secondary-foreground: oklch(0.985 0 0);
+  --bnb-muted: oklch(0.28 0.006 285);
+  --bnb-muted-foreground: oklch(0.71 0.014 286);
+  --bnb-accent: oklch(0.72 0.11 78);
+  --bnb-accent-foreground: oklch(0.21 0.006 285);
+  --bnb-destructive: oklch(0.65 0.19 26);
+  --bnb-destructive-foreground: oklch(0.985 0 0);
+  --bnb-border: oklch(0.3 0.007 286);
+  --bnb-input: oklch(0.33 0.007 286);
+  --bnb-ring: oklch(0.72 0.11 78);
+  --bnb-canvas: oklch(0.16 0.005 285);
+}
+
+/*
+ * Applied when `theme="system"`. Scoped to our own class rather than a bare
+ * media query so an explicit light choice is never overridden.
+ */
+@media (prefers-color-scheme: dark) {
+  .bnb-root.bnb-theme-system {
+    --bnb-background: oklch(0.19 0.005 285);
+    --bnb-foreground: oklch(0.985 0 0);
+    --bnb-surface: oklch(0.23 0.006 285);
+    --bnb-card: oklch(0.22 0.006 285);
+    --bnb-card-foreground: oklch(0.985 0 0);
+    --bnb-popover: oklch(0.22 0.006 285);
+    --bnb-popover-foreground: oklch(0.985 0 0);
+    --bnb-primary: oklch(0.92 0.004 285);
+    --bnb-primary-foreground: oklch(0.21 0.006 285);
+    --bnb-secondary: oklch(0.28 0.006 285);
+    --bnb-secondary-foreground: oklch(0.985 0 0);
+    --bnb-muted: oklch(0.28 0.006 285);
+    --bnb-muted-foreground: oklch(0.71 0.014 286);
+    --bnb-accent: oklch(0.72 0.11 78);
+    --bnb-accent-foreground: oklch(0.21 0.006 285);
+    --bnb-destructive: oklch(0.65 0.19 26);
+    --bnb-destructive-foreground: oklch(0.985 0 0);
+    --bnb-border: oklch(0.3 0.007 286);
+    --bnb-input: oklch(0.33 0.007 286);
+    --bnb-ring: oklch(0.72 0.11 78);
+    --bnb-canvas: oklch(0.16 0.005 285);
+  }
+}
+
+/* ------------------------------------------------------------------ theme */
+
+/*
+ * Maps the palette onto Tailwind's colour namespace so `bg-background` and
+ * `text-muted-foreground` work in components. `inline` means the values are
+ * substituted directly into utilities rather than re-declared as a second set
+ * of variables - which matters here, because a second declaration would need
+ * somewhere global to live.
+ */
+@theme inline {
+  --color-background: var(--bnb-background);
+  --color-foreground: var(--bnb-foreground);
+  --color-surface: var(--bnb-surface);
+  --color-card: var(--bnb-card);
+  --color-card-foreground: var(--bnb-card-foreground);
+  --color-popover: var(--bnb-popover);
+  --color-popover-foreground: var(--bnb-popover-foreground);
+  --color-primary: var(--bnb-primary);
+  --color-primary-foreground: var(--bnb-primary-foreground);
+  --color-secondary: var(--bnb-secondary);
+  --color-secondary-foreground: var(--bnb-secondary-foreground);
+  --color-muted: var(--bnb-muted);
+  --color-muted-foreground: var(--bnb-muted-foreground);
+  --color-accent: var(--bnb-accent);
+  --color-accent-foreground: var(--bnb-accent-foreground);
+  --color-destructive: var(--bnb-destructive);
+  --color-destructive-foreground: var(--bnb-destructive-foreground);
+  --color-border: var(--bnb-border);
+  --color-input: var(--bnb-input);
+  --color-ring: var(--bnb-ring);
+  --color-canvas: var(--bnb-canvas);
+
+  --radius-bnb: var(--bnb-radius);
+
+  --font-sans: var(--bnb-font-ui);
+  --font-mono: var(--bnb-font-mono);
+}
+
+/* ------------------------------------------------------------- base reset */
+
+/*
+ * Preflight's job, done inside our own subtree.
+ *
+ * This is not optional decoration: without it the editor inherits whatever the
+ * host has done to `button`, `input`, and heading margins, and shadcn's
+ * components assume a Preflight-like baseline. Doing it scoped is the whole
+ * trick - the host keeps its own baseline, we get ours.
+ */
+/*
+ * Deliberately NOT wrapped in a cascade layer.
+ *
+ * Unlayered normal declarations beat layered ones no matter the specificity,
+ * so a layered reset would lose to a host stylesheet with a plain
+ * `* { box-sizing: content-box }`. Unlayered, this reset wins on specificity
+ * (.bnb-root * over *) while still losing to our own important utilities.
+ */
+.bnb-root,
+.bnb-root *,
+.bnb-root *::before,
+.bnb-root *::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: var(--bnb-border);
+}
+
+.bnb-root {
+  font-family: var(--bnb-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bnb-foreground);
+  background-color: var(--bnb-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+/* Headings and lists lose the browser's defaults, as Preflight would. */
+.bnb-root h1,
+.bnb-root h2,
+.bnb-root h3,
+.bnb-root h4,
+.bnb-root h5,
+.bnb-root h6,
+.bnb-root p,
+.bnb-root figure,
+.bnb-root blockquote,
+.bnb-root dl,
+.bnb-root dd,
+.bnb-root pre {
+  margin: 0;
+}
+
+.bnb-root h1,
+.bnb-root h2,
+.bnb-root h3,
+.bnb-root h4,
+.bnb-root h5,
+.bnb-root h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.bnb-root ol,
+.bnb-root ul,
+.bnb-root menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bnb-root pre,
+.bnb-root code,
+.bnb-root kbd,
+.bnb-root samp {
+  font-family: var(--bnb-font-mono);
+  font-size: 1em;
+}
+
+/* Form controls inherit type instead of falling back to the UA's 13px Arial. */
+.bnb-root button,
+.bnb-root input,
+.bnb-root optgroup,
+.bnb-root select,
+.bnb-root textarea {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+.bnb-root button,
+.bnb-root [type='button'],
+.bnb-root [type='reset'],
+.bnb-root [type='submit'] {
+  appearance: button;
+  background-color: transparent;
+  background-image: none;
+}
+
+.bnb-root button:not(:disabled),
+.bnb-root [role='button']:not(:disabled) {
+  cursor: pointer;
+}
+
+.bnb-root :disabled {
+  cursor: default;
+}
+
+.bnb-root textarea {
+  resize: vertical;
+}
+
+.bnb-root input::placeholder,
+.bnb-root textarea::placeholder {
+  color: var(--bnb-muted-foreground);
+  opacity: 1;
+}
+
+.bnb-root img,
+.bnb-root svg,
+.bnb-root video,
+.bnb-root canvas,
+.bnb-root audio,
+.bnb-root iframe,
+.bnb-root embed,
+.bnb-root object {
+  display: block;
+  vertical-align: middle;
+}
+
+.bnb-root img,
+.bnb-root video {
+  max-width: 100%;
+  height: auto;
+}
+
+.bnb-root table {
+  border-collapse: collapse;
+  border-color: inherit;
+  text-indent: 0;
+}
+
+.bnb-root a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+.bnb-root hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}
+
+.bnb-root [hidden] {
+  display: none !important;
+}
+
+/* A visible focus ring everywhere, since the reset above removed the UA's. */
+.bnb-root :focus-visible {
+  outline: 2px solid var(--bnb-ring);
+  outline-offset: 1px;
+}
+
+
+/* ----------------------------------------------------------- editor shell */
+
+@layer components {
+  /*
+   * The three-column shell: left rail, canvas, inspector. Each column scrolls
+   * independently, which is why the grid is height-constrained rather than
+   * letting the page scroll.
+   */
+  .bnb-root .bnb-shell {
+    display: grid;
+    grid-template-columns: 224px minmax(0, 1fr) 274px;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    background-color: var(--bnb-background);
+    color: var(--bnb-foreground);
+  }
+
+  .bnb-root .bnb-shell > * {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .bnb-root .bnb-rail,
+  .bnb-root .bnb-inspector {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /*
+   * The canvas scrolls on both axes: a 1280px frame at 100% zoom is wider than
+   * the column, and an oversized frame must stay reachable.
+   */
+  .bnb-root .bnb-canvas {
+    /*
+     * Fills its column rather than sizing to the banner. Without this the tinted
+     * ground stops at the bottom of the frame and the editor looks unfinished
+     * below it - and clicking that dead area would not deselect.
+     */
+    height: 100%;
+    overflow: auto;
+    background-color: var(--bnb-canvas);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /*
+   * Centring is done with auto margins on the child, not `align-items: center`.
+   * With `center`, a frame wider than the column gets clipped on the left and
+   * cannot be scrolled back to - this was a real bug in the prototype.
+   */
+  .bnb-root .bnb-canvas-inner {
+    margin: 0 auto;
+    padding: 28px 32px 40px;
+  }
+
+  /* Section labels in the rails: 10px uppercase, per the design handoff. */
+  .bnb-root .bnb-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    color: var(--bnb-muted-foreground);
+  }
+
+  /* The checkerboard that stands in for a transparent frame colour. */
+  .bnb-root .bnb-checker {
+    background-image:
+      conic-gradient(
+        from 90deg at 50% 50%,
+        var(--bnb-border) 0 25%,
+        transparent 0 50%,
+        var(--bnb-border) 0 75%,
+        transparent 0
+      );
+    background-size: 10px 10px;
+  }
+
+  /* Divider hit strips: 6px of grab area over a 1px visual line. */
+  .bnb-root .bnb-divider {
+    position: absolute;
+    z-index: 6;
+    background-color: transparent;
+  }
+
+  .bnb-root .bnb-divider::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    background-color: var(--bnb-ring);
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+
+  .bnb-root .bnb-divider:hover::after,
+  .bnb-root .bnb-divider[data-dragging='true']::after {
+    opacity: 0.9;
+  }
+
+  .bnb-root .bnb-divider[data-axis='x'] {
+    width: 6px;
+    cursor: col-resize;
+  }
+
+  .bnb-root .bnb-divider[data-axis='x']::after {
+    width: 1px;
+  }
+
+  .bnb-root .bnb-divider[data-axis='y'] {
+    height: 6px;
+    cursor: row-resize;
+  }
+
+  .bnb-root .bnb-divider[data-axis='y']::after {
+    height: 1px;
+  }
+
+  /* Selection chrome on the canvas. No transition: it must feel instant. */
+  .bnb-root .bnb-selectable[data-selected='true'] {
+    outline: 2px solid var(--bnb-ring);
+    outline-offset: 2px;
+  }
+
+  .bnb-root .bnb-selectable[data-hovered='true'] {
+    outline: 1px dashed color-mix(in oklab, var(--bnb-ring) 60%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+/* --------------------------------------------------------------- firewall */
+
+/*
+ * The last line of defence against host CSS reaching in.
+ *
+ * Scoping and the important utilities together cover a lot, but they share one
+ * blind spot: a host rule that matches our elements and sets a property we never
+ * declare. Both halves of that are ordinary, not exotic:
+ *
+ *   button { text-transform: uppercase }   <- an element selector; matched our
+ *                                             buttons and shouted at the user
+ *   .flex  { outline: 3px solid red }      <- a colliding class name; drew a red
+ *                                             box round our layout
+ *
+ * Neither was caught by the reset, because the reset does not mention
+ * `text-transform` or `outline`. Rather than guess at an ever-growing reset,
+ * this layer neutralises the decoration properties a host is realistically
+ * likely to set, and does it in a way that still yields to our own styling.
+ *
+ * How the cascade makes that work: for IMPORTANT declarations, earlier layers
+ * beat later ones. `bnb-firewall` is declared last, so
+ *   - our `utilities` layer (earlier) overrides it, and components keep working
+ *   - every unlayered host declaration (normal or important) loses to it
+ *
+ * The renderer subtree is excluded. Banner elements are styled almost entirely
+ * from inline style driven by the document - opacity on overlays, decoration on
+ * links, letter-spacing on buttons - and `!important` beats inline style, so a
+ * firewall reaching into `.bnbr` would silently flatten the user's design.
+ *
+ * This is mitigation, not a proof. The property list is curated, so a host that
+ * sets something exotic on a colliding class name can still get through. The
+ * complete guarantee needs Tailwind's `prefix()`, which costs a rewrite of every
+ * shadcn class string. See README for the trade-off.
+ */
+@layer bnb-firewall {
+  .bnb-root *:not(.bnbr, .bnbr *) {
+    /* Typographic decoration: the most common accidental inheritance. */
+    text-transform: none !important;
+    text-shadow: none !important;
+    text-decoration-line: none !important;
+    text-decoration-style: solid !important;
+    text-indent: 0 !important;
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+    font-style: normal !important;
+    font-variant: normal !important;
+
+    /* Visual decoration a host theme tends to apply broadly. */
+    outline: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    clip-path: none !important;
+    opacity: 1 !important;
+
+    /* Layout leftovers from older stylesheets. */
+    float: none !important;
+    vertical-align: baseline !important;
+    list-style: none !important;
+  }
+
+  /*
+   * The focus ring has to survive the `outline: none` above, so it is declared
+   * in the same layer at higher specificity. Losing it would take keyboard
+   * users' only positional cue with it.
+   */
+  .bnb-root :focus-visible:not(.bnbr, .bnbr *) {
+    outline: 2px solid var(--bnb-ring) !important;
+    outline-offset: 1px !important;
+  }
+}
+
+/* -------------------------------------------------------------- controls */
+
+@layer components {
+  /*
+   * A native range input, styled.
+   *
+   * Native rather than a Radix slider, and not only to avoid a dependency: the
+   * inspector is mostly sliders, and the browser already gives them keyboard
+   * support, correct ARIA, and touch handling. Reimplementing that is a lot of
+   * surface for no gain.
+   */
+  .bnb-root .bnb-range {
+    appearance: none;
+    height: 18px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .bnb-root .bnb-range::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--bnb-border);
+  }
+
+  .bnb-root .bnb-range::-moz-range-track {
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--bnb-border);
+  }
+
+  .bnb-root .bnb-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    margin-top: -5px;
+    border-radius: 999px;
+    border: 1px solid var(--bnb-ring);
+    background-color: var(--bnb-background);
+  }
+
+  .bnb-root .bnb-range::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 999px;
+    border: 1px solid var(--bnb-ring);
+    background-color: var(--bnb-background);
+  }
+
+  .bnb-root .bnb-range:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--bnb-ring);
+    outline-offset: 1px;
+  }
+
+  /*
+   * The native dialog element.
+   *
+   * Chosen over a portalled overlay precisely because it stays in the DOM where
+   * it sits: it inherits `.bnb-root`, so it cannot lose its styling, and the
+   * package ships no portals at all. Focus trapping, Escape, and the backdrop
+   * all come from the browser.
+   */
+  .bnb-root .bnb-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 64px);
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--bnb-border);
+    border-radius: calc(var(--bnb-radius) * 2);
+    background-color: var(--bnb-card);
+    color: var(--bnb-card-foreground);
+    box-shadow: 0 12px 40px -12px rgb(0 0 0 / 0.28);
+  }
+
+  .bnb-root .bnb-dialog::backdrop {
+    background-color: rgb(0 0 0 / 0.44);
+  }
+
+  .bnb-root .bnb-dialog:not([open]) {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------- canvas element targets */
+
+@layer components {
+  /*
+   * Selection and drag affordances on the elements the renderer draws.
+   *
+   * The editor attaches these to the real elements rather than overlaying hit
+   * boxes: an element still in the flex stack has no position the editor knows
+   * about, so a hit box could only ever be placed over one that had already been
+   * dragged free - which is backwards, since dragging free is how it gets there.
+   */
+  .bnb-root [data-bnb-draggable] {
+    cursor: move;
+  }
+
+  .bnb-root [data-bnb-draggable]:hover {
+    outline: 1px dashed color-mix(in oklab, var(--bnb-ring) 65%, transparent);
+    outline-offset: 3px;
+  }
+
+  /* No transition: a selection outline has to feel instant. */
+  .bnb-root [data-bnb-selected] {
+    outline: 2px solid var(--bnb-ring);
+    outline-offset: 3px;
+  }
+}

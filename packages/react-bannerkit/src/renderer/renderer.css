@@ -1,0 +1,318 @@
+/*
+ * The renderer's stylesheet.
+ *
+ * Hand-written, no Tailwind, scoped to `.bnbr`. This file lands on public
+ * pages, so it is deliberately small and structural: everything that varies per
+ * banner (colour, size, weight, spacing) arrives as inline style from the
+ * document, and everything here is the scaffolding those values hang on.
+ *
+ * It shares nothing with builder.css on purpose. A rendered banner has to look
+ * identical in the editor's preview and on the consumer's page, so it must not
+ * read a single editor token - if it did, the preview would be a lie.
+ */
+
+/* ------------------------------------------------------------------- reset */
+
+/*
+ * A banner is a fixed piece of visual design, not flowing page content. If it
+ * inherited the host's line-height, list styles, or heading margins it would
+ * render differently on every site it was dropped into.
+ */
+.bnbr,
+.bnbr *,
+.bnbr *::before,
+.bnbr *::after {
+  box-sizing: border-box;
+}
+
+.bnbr {
+  --bnbr-font-heading: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bnbr-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  position: relative;
+  display: block;
+  font-family: var(--bnbr-font-body);
+  line-height: 1.5;
+  text-align: left;
+  /* Contains the absolutely positioned panels and any stacking inside them. */
+  isolation: isolate;
+}
+
+.bnbr p,
+.bnbr h1,
+.bnbr h2,
+.bnbr h3,
+.bnbr figure {
+  margin: 0;
+}
+
+.bnbr a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.bnbr button {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.bnbr img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ------------------------------------------------------------ breakpoints */
+
+/*
+ * All three layouts are emitted and CSS chooses between them.
+ *
+ * The alternative - measuring the container in JavaScript and rendering one
+ * tree - cannot be server-rendered: it either guesses a breakpoint and snaps to
+ * the right one on hydration, or renders nothing and shifts the page. Both hurt
+ * LCP and CLS on exactly the pages banners live on. Emitting three small trees
+ * costs DOM nodes, which are cheap, and buys a correct first paint.
+ */
+.bnbr-bp {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .bnbr-bp[data-bp='mobile'] {
+    display: block;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bnbr-bp[data-bp='tablet'] {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bnbr-bp[data-bp='laptop'] {
+    display: block;
+  }
+}
+
+/* When the consumer names a breakpoint explicitly, only one tree is emitted. */
+.bnbr-bp-fixed {
+  display: block;
+}
+
+/* ------------------------------------------------------------------ frame */
+
+.bnbr-frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/*
+ * Panels are absolutely positioned from percentage rects computed off the
+ * layout tree, so the whole banner scales with its container and needs no
+ * measurement in JavaScript.
+ */
+.bnbr-panel {
+  position: absolute;
+  overflow: hidden;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* Panel background images are real <img> elements so the browser can prioritise them. */
+.bnbr-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* The element stack. Alignment and spacing come from the panel as inline style. */
+.bnbr-stack {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+/* A freely positioned element leaves the stack and sits at its own percentage. */
+.bnbr-free {
+  position: absolute;
+  margin: 0;
+  z-index: 3;
+}
+
+.bnbr-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bnbr-heading,
+.bnbr-text {
+  position: relative;
+  z-index: 2;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+.bnbr-heading {
+  font-family: var(--bnbr-font-heading);
+  line-height: 1.1;
+}
+
+.bnbr-text {
+  line-height: 1.65;
+}
+
+.bnbr-button {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  padding: 10px 20px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.bnbr-link {
+  position: relative;
+  z-index: 2;
+  text-underline-offset: 3px;
+}
+
+.bnbr-image {
+  position: relative;
+  z-index: 2;
+}
+
+.bnbr-spacer {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.bnbr-icon {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+}
+
+/* --------------------------------------------------------------- carousel */
+
+.bnbr-carousel {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * Slides are stacked layers rather than a scrolling track, because each slide
+ * owns its own background and elements and they need to cross-fade in place.
+ */
+.bnbr-slide {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bnbr-slide[data-active='false'] {
+  pointer-events: none;
+}
+
+.bnbr-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-top: -17px;
+  border-radius: 999px;
+  color: #fff;
+  background-color: rgb(0 0 0 / 0.32);
+  backdrop-filter: blur(2px);
+  transition: background-color 160ms ease;
+}
+
+.bnbr-nav:hover {
+  background-color: rgb(0 0 0 / 0.52);
+}
+
+.bnbr-nav[data-dir='prev'] {
+  left: 12px;
+}
+
+.bnbr-nav[data-dir='next'] {
+  right: 12px;
+}
+
+.bnbr-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 8;
+  display: flex;
+  gap: 7px;
+  transform: translateX(-50%);
+}
+
+.bnbr-dot {
+  border: 0;
+  padding: 0;
+  background-color: rgb(255 255 255 / 0.45);
+  transition:
+    background-color 200ms ease,
+    width 200ms ease;
+}
+
+.bnbr-dot[data-active='true'] {
+  background-color: #fff;
+}
+
+.bnbr-dot[data-style='dots'] {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.bnbr-dot[data-style='bars'] {
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.bnbr-counter {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 8;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background-color: rgb(0 0 0 / 0.38);
+}
+
+/*
+ * Autoplay is disabled in JavaScript when reduced motion is requested; this
+ * removes the transition as well, so a slide changed by an arrow press swaps
+ * instantly rather than sliding.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .bnbr-slide,
+  .bnbr-dot,
+  .bnbr-nav {
+    transition: none !important;
+  }
+}

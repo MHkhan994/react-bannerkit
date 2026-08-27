@@ -1,0 +1,134 @@
+{
+  "name": "react-bannerkit",
+  "version": "0.1.0",
+  "description": "A visual banner template builder and renderer for React. Split banners into panels, fill them with content, tune three independent breakpoints, and ship the result with a self-contained renderer.",
+  "license": "MIT",
+  "author": "MHkhan994",
+  "homepage": "https://github.com/MHkhan994/react-bannerkit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MHkhan994/react-bannerkit.git",
+    "directory": "packages/react-bannerkit"
+  },
+  "bugs": {
+    "url": "https://github.com/MHkhan994/react-bannerkit/issues"
+  },
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "keywords": [
+    "banner",
+    "banner-builder",
+    "template-editor",
+    "carousel",
+    "react",
+    "shadcn",
+    "visual-editor",
+    "page-builder"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./builder": {
+      "import": {
+        "types": "./dist/builder.d.ts",
+        "default": "./dist/builder.js"
+      },
+      "require": {
+        "types": "./dist/builder.d.cts",
+        "default": "./dist/builder.cjs"
+      }
+    },
+    "./renderer": {
+      "import": {
+        "types": "./dist/renderer.d.ts",
+        "default": "./dist/renderer.js"
+      },
+      "require": {
+        "types": "./dist/renderer.d.cts",
+        "default": "./dist/renderer.cjs"
+      }
+    },
+    "./builder.css": "./dist/builder.css",
+    "./renderer.css": "./dist/renderer.css",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "renderer": [
+        "./dist/renderer.d.cts"
+      ],
+      "builder": [
+        "./dist/builder.d.cts"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "pnpm run build:js && pnpm run build:directives && pnpm run build:css",
+    "build:js": "tsup",
+    "build:css": "node scripts/build-css.mjs",
+    "build:directives": "node scripts/stamp-directives.mjs",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "check:exports": "publint --strict && attw --pack --exclude-entrypoints renderer.css builder.css",
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run build && pnpm run check:exports && pnpm run check:smoke",
+    "prepublishOnly": "pnpm run verify",
+    "check:smoke": "node scripts/smoke-tarball.mjs"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.6",
+    "@types/node": "^26.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "happy-dom": "^20.11.10",
+    "postcss": "^8.5.26",
+    "postcss-prefix-selector": "^2.1.1",
+    "publint": "^0.3.24",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0"
+  }
+}

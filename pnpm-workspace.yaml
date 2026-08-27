@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# pnpm 10 blocks postinstall scripts by default. These four legitimately need them:
+# native binaries (esbuild, oxide, unrs-resolver) and image codecs (sharp).
+onlyBuiltDependencies:
+  - "@tailwindcss/oxide"
+  - esbuild
+  - sharp
+  - unrs-resolver

@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/classical-88b255f8-a2c1-4a53-9d9b-65608562f08e/styles.css">
+<script src="_ds/classical-88b255f8-a2c1-4a53-9d9b-65608562f08e/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+<style>
+  :root { --font-heading: "Inter", system-ui, sans-serif; --font-body: "Inter", system-ui, sans-serif; }
+  body { margin: 0; background: var(--color-bg); font-family: var(--font-body); }
+  h1, h2, h3, h4 { letter-spacing: -0.015em; }
+  a { color: var(--color-accent-700); }
+  a:hover { color: var(--color-accent-600); }
+  .bb-input { font-family: var(--font-body); font-size: 13px; color: var(--color-text); background: var(--color-neutral-100); border: 1px solid var(--color-divider); border-radius: var(--radius-md); padding: 7px 9px; width: 100%; box-sizing: border-box; }
+  .bb-input:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  .bb-lab { font-family: var(--font-body); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--color-text) 55%, transparent); font-feature-settings: "tnum"; }
+  .bb-mini { font-family: var(--font-body); font-size: 12px; background: transparent; border: 1px solid var(--color-divider); border-radius: var(--radius-md); padding: 6px 9px; cursor: pointer; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
+  .bb-mini:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .bb-mini:active { background: color-mix(in srgb, var(--color-accent) 20%, transparent); }
+  .bb-scroll::-webkit-scrollbar { width: 7px; }
+  .bb-scroll::-webkit-scrollbar-thumb { background: var(--color-neutral-300); border-radius: 4px; }
+  input[type=range] { accent-color: var(--color-accent); }
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;font-family:var(--font-body);color:var(--color-text);background:var(--color-bg)">
+
+  <sc-if value="{{ isTemplates }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;min-height:100vh">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;padding:var(--space-3) var(--space-6);border-bottom:1px solid var(--color-divider)">
+        <div style="display:flex;align-items:baseline;gap:var(--space-4)">
+          <span style="font-family:var(--font-heading);font-size:23px;font-weight:600">Banner Studio</span>
+          <span class="bb-lab">Templates</span>
+        </div>
+        <button class="btn btn-primary" onClick="{{ openDialog }}">New template</button>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;max-width:1000px;width:100%;margin:0 auto;padding:var(--space-8) var(--space-6);box-sizing:border-box">
+        <sc-if value="{{ hasTemplates }}">
+          <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+            <h1 style="font-family:var(--font-heading);font-size:42px;font-weight:400;margin:0">Your templates</h1>
+            <hr class="hr" style="margin:0">
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ templates }}" as="t" hint-placeholder-count="2">
+                <div style="display:grid;grid-template-columns:1.1fr 1.9fr auto auto;gap:var(--space-6);align-items:center;padding:var(--space-4) 0;border-bottom:1px solid var(--color-divider)">
+                  <div style="display:flex;flex-direction:column;gap:5px">
+                    <span style="font-family:var(--font-heading);font-size:23px;font-weight:600">{{ t.name }}</span>
+                    <span class="bb-lab">{{ t.meta }}</span>
+                  </div>
+                  <p style="margin:0;font-size:14px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 68%, transparent);text-wrap:pretty">{{ t.desc }}</p>
+                  <span class="tag tag-outline">{{ t.panelLabel }}</span>
+                  <button class="btn btn-secondary" onClick="{{ t.open }}">Open editor</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noTemplates }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:var(--space-8) 0">
+            <div class="card" style="max-width:520px;text-align:center;padding:var(--space-8) var(--space-6);display:flex;flex-direction:column;gap:var(--space-4);align-items:center">
+              <span class="bb-lab">No templates yet</span>
+              <h1 style="font-family:var(--font-heading);font-size:38px;font-weight:400;margin:0;line-height:1.15">Start with a blank template</h1>
+              <p style="margin:0;font-size:14px;line-height:1.7;color:color-mix(in srgb, var(--color-text) 68%, transparent);max-width:40ch;text-wrap:pretty">Give it a name and, if it helps, a short description. Every new template opens with one banner panel ready to edit.</p>
+              <button class="btn btn-primary" onClick="{{ openDialog }}" style="margin-top:var(--space-2)">Create template</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEditor }}">
+    <div style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:var(--space-2) var(--space-4);border-bottom:1px solid var(--color-divider);background:var(--color-neutral-100)">
+        <div style="display:flex;align-items:center;gap:var(--space-3);min-width:0">
+          <button class="bb-mini" onClick="{{ backToList }}">← Templates</button>
+          <span style="font-family:var(--font-heading);font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ curName }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:3px">
+          <sc-for list="{{ bpOptions }}" as="b" hint-placeholder-count="3">
+            <button style="{{ b.style }}" onClick="{{ b.onPick }}">{{ b.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-3)">
+          <div style="display:flex;align-items:center;gap:8px" title="{{ heightResolved }}">
+            <span class="bb-lab">Height</span>
+            <div style="display:flex;gap:4px">
+              <sc-for list="{{ heightModes }}" as="hm" hint-placeholder-count="2">
+                <button style="{{ hm.style }}" onClick="{{ hm.onPick }}">{{ hm.label }}</button>
+              </sc-for>
+            </div>
+            <input class="bb-input" style="width:70px" type="number" value="{{ heightVal }}" onChange="{{ onHeight }}" />
+            <span class="bb-lab">{{ heightUnit }}</span>
+          </div>
+          <button class="btn btn-primary" onClick="{{ goPreview }}">Preview</button>
+        </div>
+      </div>
+
+      <div style="flex:1;display:grid;grid-template-columns:224px 1fr 274px;min-height:0">
+
+        <div class="bb-scroll" style="border-right:1px solid var(--color-divider);overflow-y:auto;padding:var(--space-4) var(--space-3);display:flex;flex-direction:column;gap:var(--space-6)">
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <span class="bb-lab">Add to selected panel</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <sc-for list="{{ toolbox }}" as="tb" hint-placeholder-count="8">
+                <button class="bb-mini" style="justify-content:flex-start" onClick="{{ tb.onAdd }}" disabled="{{ tb.disabled }}">{{ tb.label }}</button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ noPanelSelected }}">
+              <p style="margin:4px 0 0;font-size:11.5px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Select a panel on the canvas first.</p>
+            </sc-if>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <span class="bb-lab">Banner frame</span>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between">
+                <label class="bb-lab">Space between panels</label>
+                <span class="bb-lab" style="letter-spacing:0">{{ gutterHint }}</span>
+              </div>
+              <input type="range" min="0" max="48" step="1" value="{{ gutterVal }}" onChange="{{ onGutter }}" style="width:100%" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label class="bb-lab">Colour behind panels</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ gutterColors }}" as="c" hint-placeholder-count="6">
+                  <button style="{{ c.style }}" onClick="{{ c.onPick }}" title="{{ c.label }}"></button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <span class="bb-lab">Layers</span>
+            <button style="{{ templateRowStyle }}" onClick="{{ selectTemplate }}">Template settings</button>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <sc-for list="{{ layers }}" as="l" hint-placeholder-count="4">
+                <div style="{{ l.rowStyle }}">
+                  <button style="{{ l.btnStyle }}" onClick="{{ l.select }}">{{ l.label }}</button>
+                  <sc-if value="{{ l.removable }}">
+                    <button class="bb-mini" style="border:0;padding:2px 5px;font-size:13px;line-height:1" onClick="{{ l.remove }}">×</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <span class="bb-lab">This breakpoint</span>
+            <p style="margin:0;font-size:11.5px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 62%, transparent);text-wrap:pretty">{{ bpNote }}</p>
+            <div style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
+              <sc-for list="{{ copyTargets }}" as="c" hint-placeholder-count="2">
+                <button class="bb-mini" style="justify-content:center" onClick="{{ c.onPick }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div class="bb-scroll" style="overflow:auto;background:var(--color-surface);display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-3);padding:var(--space-6)">
+          <div style="display:flex;align-items:baseline;gap:var(--space-3);margin:0 auto">
+            <span class="bb-lab">{{ canvasLabel }}</span>
+          </div>
+          <div style="{{ frameOuter }}">
+            <div ref="{{ frameRef }}" style="{{ frameStyle }}">
+              <sc-for list="{{ leaves }}" as="p" hint-placeholder-count="1">
+                <div data-panel="true" style="{{ p.frameStyle }}" onClick="{{ p.select }}" onMouseEnter="{{ p.enter }}" onMouseLeave="{{ p.leave }}">
+                  <sc-for list="{{ p.layers }}" as="ly" hint-placeholder-count="1">
+                  <div style="{{ ly.layerStyle }}">
+                  <div style="{{ ly.bgStyle }}"></div>
+                  <div style="{{ ly.stackStyle }}">
+                    <sc-for list="{{ ly.elements }}" as="el" hint-placeholder-count="2">
+                      <sc-if value="{{ el.isOverlay }}">
+                        <div style="{{ el.style }}" onClick="{{ el.select }}"></div>
+                      </sc-if>
+                      <sc-if value="{{ el.isHeading }}">
+                        <h2 style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}">{{ el.text }}</h2>
+                      </sc-if>
+                      <sc-if value="{{ el.isText }}">
+                        <p style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}">{{ el.text }}</p>
+                      </sc-if>
+                      <sc-if value="{{ el.isButton }}">
+                        <button style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}">{{ el.text }}</button>
+                      </sc-if>
+                      <sc-if value="{{ el.isLink }}">
+                        <span style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}">{{ el.text }}</span>
+                      </sc-if>
+                      <sc-if value="{{ el.isImage }}">
+                        <div style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}"></div>
+                      </sc-if>
+                      <sc-if value="{{ el.isSpacer }}">
+                        <div style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}"></div>
+                      </sc-if>
+                      <sc-if value="{{ el.isIcon }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="{{ el.style }}" onClick="{{ el.select }}" onMouseDown="{{ el.drag }}"><path d="{{ el.path }}"></path></svg>
+                      </sc-if>
+                    </sc-for>
+                  </div>
+                  </div>
+                  </sc-for>
+                  <sc-if value="{{ p.showArrows }}">
+                    <button style="{{ p.prevStyle }}" onClick="{{ p.prev }}">‹</button>
+                    <button style="{{ p.nextStyle }}" onClick="{{ p.next }}">›</button>
+                  </sc-if>
+                  <sc-if value="{{ p.showCounter }}">
+                    <span style="{{ p.counterStyle }}">{{ p.counterText }}</span>
+                  </sc-if>
+                  <sc-if value="{{ p.showDots }}">
+                    <div style="{{ p.dotsStyle }}">
+                      <sc-for list="{{ p.dots }}" as="d" hint-placeholder-count="3">
+                        <button style="{{ d.style }}" onClick="{{ d.onPick }}"></button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ p.showTools }}">
+                    <div style="position:absolute;top:7px;right:7px;z-index:30;display:flex;gap:4px;background:color-mix(in srgb, #f8f4f4 94%, transparent);border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:3px;box-shadow:var(--shadow-sm)">
+                      <button class="bb-mini" style="border:0;padding:4px 6px" title="Split into columns" onClick="{{ p.splitCols }}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M12 4v16"></path></svg>
+                      </button>
+                      <button class="bb-mini" style="border:0;padding:4px 6px" title="Split into rows" onClick="{{ p.splitRows }}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 12h18"></path></svg>
+                      </button>
+                      <sc-if value="{{ p.canRemove }}">
+                        <button class="bb-mini" style="border:0;padding:4px 6px" title="Delete panel" onClick="{{ p.remove }}">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"></path></svg>
+                        </button>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ p.showBadge }}">
+                    <span style="position:absolute;top:7px;left:7px;z-index:30;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;background:var(--color-accent);color:#fff;padding:3px 7px;border-radius:2px">{{ p.label }}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <sc-for list="{{ dividers }}" as="d" hint-placeholder-count="0">
+                <div style="{{ d.style }}" onMouseDown="{{ d.down }}"></div>
+              </sc-for>
+            </div>
+          </div>
+          <p style="margin:0 auto;font-size:11.5px;color:color-mix(in srgb, var(--color-text) 52%, transparent)">Hover a panel for split controls. Drag a divider to resize, or drag an element to place it freely.</p>
+        </div>
+
+        <div class="bb-scroll" style="border-left:1px solid var(--color-divider);overflow-y:auto;padding:var(--space-4) var(--space-3);display:flex;flex-direction:column;gap:var(--space-4)">
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <span class="bb-lab">{{ inspKicker }}</span>
+            <span style="font-family:var(--font-heading);font-size:21px;font-weight:600">{{ inspTitle }}</span>
+          </div>
+          <hr class="hr" style="margin:0">
+          <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+            <sc-for list="{{ fields }}" as="f" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:baseline;justify-content:space-between">
+                  <label class="bb-lab">{{ f.label }}</label>
+                  <span class="bb-lab" style="letter-spacing:0">{{ f.hint }}</span>
+                </div>
+                <sc-if value="{{ f.isText }}">
+                  <input class="bb-input" value="{{ f.value }}" onChange="{{ f.onChange }}" />
+                </sc-if>
+                <sc-if value="{{ f.isArea }}">
+                  <textarea class="bb-input" rows="3" style="resize:vertical;line-height:1.5" value="{{ f.value }}" onChange="{{ f.onChange }}"></textarea>
+                </sc-if>
+                <sc-if value="{{ f.isNum }}">
+                  <input class="bb-input" type="number" value="{{ f.value }}" onChange="{{ f.onChange }}" />
+                </sc-if>
+                <sc-if value="{{ f.isRange }}">
+                  <input type="range" min="{{ f.min }}" max="{{ f.max }}" step="{{ f.step }}" value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%" />
+                </sc-if>
+                <sc-if value="{{ f.isSeg }}">
+                  <div style="display:flex;gap:4px;flex-wrap:wrap">
+                    <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="2">
+                      <button style="{{ o.style }}" onClick="{{ o.onPick }}">{{ o.label }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ f.isFile }}">
+                  <input class="bb-input" type="file" accept="image/*" onChange="{{ f.onChange }}" style="padding:5px;font-size:11.5px" />
+                </sc-if>
+                <sc-if value="{{ f.isColor }}">
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <sc-for list="{{ f.options }}" as="o" hint-placeholder-count="6">
+                      <button style="{{ o.style }}" onClick="{{ o.onPick }}" title="{{ o.label }}"></button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ showSlides }}">
+            <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+              <hr class="hr" style="margin:0">
+              <span class="bb-lab">Carousel slides</span>
+              <sc-for list="{{ slides }}" as="s" hint-placeholder-count="2">
+                <div style="{{ s.rowStyle }}">
+                  <button style="{{ s.thumbStyle }}" onClick="{{ s.select }}"></button>
+                  <span style="flex:1;font-size:12.5px">{{ s.label }}</span>
+                  <sc-if value="{{ s.removable }}">
+                    <button class="bb-mini" style="border:0;padding:2px 5px" onClick="{{ s.remove }}">×</button>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <button class="bb-mini" onClick="{{ addSlide }}">Add slide</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showPanelDelete }}">
+            <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+              <hr class="hr" style="margin:0">
+              <button class="bb-mini" onClick="{{ deletePanel }}" disabled="{{ panelDeleteOff }}">Delete panel</button>
+              <p style="margin:0;font-size:11.5px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 55%, transparent);text-wrap:pretty">{{ panelDeleteNote }}</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showElDelete }}">
+            <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+              <hr class="hr" style="margin:0">
+              <button class="bb-mini" onClick="{{ deleteEl }}">Delete element</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPreview }}">
+    <div style="min-height:100vh;background:var(--color-neutral-900);display:flex;flex-direction:column;align-items:center;gap:var(--space-4);padding:var(--space-6) 0">
+      <div style="display:flex;align-items:center;gap:var(--space-4);width:100%;max-width:1100px;padding:0 var(--space-6);box-sizing:border-box;justify-content:space-between">
+        <div style="display:flex;align-items:baseline;gap:var(--space-3)">
+          <span style="font-family:var(--font-heading);font-size:20px;font-weight:600;color:var(--color-neutral-100)">{{ curName }}</span>
+          <span class="bb-lab" style="color:var(--color-neutral-400)">Preview · {{ canvasLabel }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2)">
+          <sc-for list="{{ bpOptions }}" as="b" hint-placeholder-count="3">
+            <button style="{{ b.darkStyle }}" onClick="{{ b.onPick }}">{{ b.label }}</button>
+          </sc-for>
+          <button class="bb-mini" style="color:var(--color-neutral-100);border-color:var(--color-neutral-700);margin-left:var(--space-3)" onClick="{{ exitPreview }}">Back to editor</button>
+        </div>
+      </div>
+      <div style="{{ frameOuter }}">
+        <div style="{{ frameStyle }}">
+          <sc-for list="{{ leaves }}" as="p" hint-placeholder-count="1">
+            <div style="{{ p.frameStyle }}" onMouseEnter="{{ p.hoverIn }}" onMouseLeave="{{ p.hoverOut }}">
+              <sc-for list="{{ p.layers }}" as="ly" hint-placeholder-count="1">
+              <div style="{{ ly.layerStyle }}">
+              <div style="{{ ly.bgStyle }}"></div>
+              <div style="{{ ly.stackStyle }}">
+                <sc-for list="{{ ly.elements }}" as="el" hint-placeholder-count="2">
+                  <sc-if value="{{ el.isOverlay }}"><div style="{{ el.style }}"></div></sc-if>
+                  <sc-if value="{{ el.isHeading }}"><h2 style="{{ el.style }}">{{ el.text }}</h2></sc-if>
+                  <sc-if value="{{ el.isText }}"><p style="{{ el.style }}">{{ el.text }}</p></sc-if>
+                  <sc-if value="{{ el.isButton }}"><button style="{{ el.style }}">{{ el.text }}</button></sc-if>
+                  <sc-if value="{{ el.isLink }}"><span style="{{ el.style }}">{{ el.text }}</span></sc-if>
+                  <sc-if value="{{ el.isImage }}"><div style="{{ el.style }}"></div></sc-if>
+                  <sc-if value="{{ el.isSpacer }}"><div style="{{ el.style }}"></div></sc-if>
+                  <sc-if value="{{ el.isIcon }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="{{ el.style }}"><path d="{{ el.path }}"></path></svg></sc-if>
+                </sc-for>
+              </div>
+              </div>
+              </sc-for>
+              <sc-if value="{{ p.showArrows }}">
+                <button style="{{ p.prevStyle }}" onClick="{{ p.prev }}">‹</button>
+                <button style="{{ p.nextStyle }}" onClick="{{ p.next }}">›</button>
+              </sc-if>
+              <sc-if value="{{ p.showCounter }}">
+                <span style="{{ p.counterStyle }}">{{ p.counterText }}</span>
+              </sc-if>
+              <sc-if value="{{ p.showDots }}">
+                <div style="{{ p.dotsStyle }}">
+                  <sc-for list="{{ p.dots }}" as="d" hint-placeholder-count="3">
+                    <button style="{{ d.style }}" onClick="{{ d.onPick }}"></button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ confirmCopy }}">
+    <div style="position:fixed;inset:0;background:color-mix(in srgb, #201f1d 44%, transparent);display:flex;align-items:center;justify-content:center;z-index:95;padding:var(--space-6)">
+      <div style="width:430px;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:var(--space-6)">
+        <h2 style="font-family:var(--font-heading);font-size:26px;font-weight:600;margin:0 0 var(--space-2)">Copy {{ copyFromLabel }} to {{ copyToLabel }}?</h2>
+        <p style="margin:0;font-size:13.5px;line-height:1.65;color:color-mix(in srgb, var(--color-text) 68%, transparent);text-wrap:pretty">This replaces everything currently on {{ copyToLabel }} with the {{ copyFromLabel }} layout — {{ copyPanelCount }}, their content and the banner height. It cannot be undone.</p>
+        <div style="display:flex;justify-content:flex-end;gap:var(--space-2);margin-top:var(--space-6)">
+          <button class="btn btn-secondary" onClick="{{ cancelCopy }}">Cancel</button>
+          <button class="btn btn-primary" onClick="{{ applyCopy }}">Replace {{ copyToLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ dialog }}">
+    <div style="position:fixed;inset:0;background:color-mix(in srgb, #201f1d 44%, transparent);display:flex;align-items:center;justify-content:center;z-index:90;padding:var(--space-6)">
+      <div style="width:470px;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:var(--space-6)">
+        <h2 style="font-family:var(--font-heading);font-size:29px;font-weight:600;margin:0 0 var(--space-2)">New template</h2>
+        <p style="margin:0 0 var(--space-4);font-size:13px;line-height:1.65;color:color-mix(in srgb, var(--color-text) 65%, transparent)">The template opens with one banner panel, ready for you to split and fill.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label class="bb-lab">Template name</label>
+            <input class="bb-input" value="{{ dName }}" onChange="{{ onName }}" placeholder="Homepage hero" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label class="bb-lab">Description — optional</label>
+            <textarea class="bb-input" rows="3" style="resize:vertical;line-height:1.5" value="{{ dDesc }}" onChange="{{ onDesc }}" placeholder="Where this banner runs, and who it speaks to."></textarea>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:var(--space-2);margin-top:var(--space-6)">
+          <button class="btn btn-secondary" onClick="{{ closeDialog }}">Cancel</button>
+          <button class="btn btn-primary" onClick="{{ createTemplate }}" disabled="{{ createDisabled }}">Create template</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;seeded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const uid = () => Math.random().toString(36).slice(2, 8);
+const PHOTO = 'assets/photo.jpg';
+const DEVICES = {
+  laptop: { label: 'Laptop', w: 1280, scale: 0.6, h: 420, vh: 800 },
+  tablet: { label: 'Tab', w: 834, scale: 0.72, h: 380, vh: 1112 },
+  mobile: { label: 'Mobile', w: 390, scale: 1, h: 440, vh: 844 }
+};
+const SWATCH = [
+  ['#f8f4f4', 'Paper'], ['#201f1d', 'Ink'], ['#b68235', 'Accent'],
+  ['#7d5411', 'Accent deep'], ['#eae9e9', 'Surface'], ['#3a270d', 'Umber']
+];
+const ICONS = {
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  star: 'M12 3l2.9 5.9 6.1.9-4.5 4.3 1.1 6.4L12 17.6 6.4 20.5l1.1-6.4L3 9.8l6.1-.9z',
+  check: 'M4 12.5l5 5L20 6.5',
+  book: 'M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5zM20 18v3H6.5'
+};
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.frameRef = React.createRef();
+    const seeded = props.seeded ?? false;
+    const templates = seeded ? [this.newTemplate('Homepage hero', 'Runs above the fold on the storefront. Rotates weekly.')] : [];
+    this.state = {
+      view: 'templates', dialog: false, dName: '', dDesc: '',
+      templates, curId: null, bp: 'laptop',
+      selPanel: null, selEl: null, hover: null, tick: 0, copyTo: null
+    };
+  }
+
+  componentDidMount() {
+    this.play = {};
+    this.timer = setInterval(() => {
+      if (this.state.view !== 'preview') return;
+      const now = Date.now();
+      let changed = false;
+      const walk = n => {
+        if (n.kind === 'split') { walk(n.a); walk(n.b); return; }
+        if (n.type !== 'carousel' || !n.autoplay) return;
+        const st = this.play[n.id] || (this.play[n.id] = { i: 0, at: now });
+        if (st.hover && n.pauseHover) { st.at = now; return; }
+        if (now - st.at >= n.interval) {
+          const next = st.i + 1;
+          if (next >= n.slides.length && !n.loop) { st.i = n.slides.length - 1; st.at = now; return; }
+          st.i = next % n.slides.length;
+          st.at = now;
+          changed = true;
+        }
+      };
+      const d = this.bpData();
+      if (d) walk(d.root);
+      if (changed) this.setState(s => ({ tick: s.tick + 1 }));
+    }, 120);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  dragEl(panel, el) {
+    return e => {
+      if (e.button !== 0) return;
+      const nodeEl = e.currentTarget;
+      const host = nodeEl.closest('[data-panel]');
+      if (!host) return;
+      const box = host.getBoundingClientRect();
+      const startRect = nodeEl.getBoundingClientRect();
+      const start = { x: e.clientX, y: e.clientY };
+      const base = el.pos ? { ...el.pos } : null;
+      let moved = false;
+      const move = ev => {
+        const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+        if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+        if (!moved) {
+          moved = true;
+          if (!base) {
+            el.pos = {
+              x: ((startRect.left - box.left) / box.width) * 100,
+              y: ((startRect.top - box.top) / box.height) * 100
+            };
+          } else el.pos = { ...base };
+        }
+        const p0 = base || { x: ((startRect.left - box.left) / box.width) * 100, y: ((startRect.top - box.top) / box.height) * 100 };
+        el.pos = {
+          x: Math.max(0, Math.min(96, p0.x + (dx / box.width) * 100)),
+          y: Math.max(0, Math.min(96, p0.y + (dy / box.height) * 100))
+        };
+        this.forceUpdate();
+      };
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        if (moved) this.setState({ selPanel: panel.id, selEl: el.id });
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      e.stopPropagation();
+      e.preventDefault();
+    };
+  }
+
+  step(node, dir) {
+    const n = node.slides.length;
+    if (this.state.view === 'preview') {
+      const st = this.play[node.id] || (this.play[node.id] = { i: 0, at: Date.now() });
+      let next = st.i + dir;
+      if (next < 0) next = node.loop ? n - 1 : 0;
+      if (next >= n) next = node.loop ? 0 : n - 1;
+      st.i = next; st.at = Date.now();
+      this.setState(s => ({ tick: s.tick + 1 }));
+      return;
+    }
+    let next = node.slide + dir;
+    if (next < 0) next = node.loop ? n - 1 : 0;
+    if (next >= n) next = node.loop ? 0 : n - 1;
+    node.slide = next;
+    this.setState({ selPanel: node.id, selEl: null });
+  }
+
+  /* ---------- model ---------- */
+  mkEl(type) {
+    const base = { id: uid(), type };
+    if (type === 'heading') return { ...base, text: 'A season of new arrivals', fs: 46, color: '#f8f4f4', align: 'left', weight: 400, measure: 26 };
+    if (type === 'text') return { ...base, text: 'Hand-bound editions, gathered through the spring and set out for the first time.', fs: 16, color: '#eae9e9', align: 'left', weight: 400, measure: 44 };
+    if (type === 'button') return { ...base, text: 'Browse the collection', variant: 'primary', href: '/collection', fs: 14, radius: 4, color: '#f8f4f4' };
+    if (type === 'link') return { ...base, text: 'See the full catalogue →', href: '/catalogue', fs: 13.5, color: '#e1ad66', underline: true };
+    if (type === 'image') return { ...base, src: PHOTO, width: 42, radius: 2, plate: true, fit: 'cover', href: '' };
+    if (type === 'overlay') return { ...base, color: '#201f1d', opacity: 0.42, mode: 'gradient' };
+    if (type === 'spacer') return { ...base, size: 18 };
+    return { ...base, glyph: 'star', fs: 26, color: '#e1ad66' };
+  }
+
+  mkPanel(filled) {
+    const p = {
+      id: uid(), kind: 'panel', type: 'single', bgMode: 'photo', bg: '#3a270d',
+      pad: 40, gap: 14, alignX: 'flex-start', alignY: 'center',
+      radius: 0, borderW: 0, borderColor: '#b68235',
+      img: PHOTO,
+      autoplay: true, interval: 4000, transition: 'fade', speed: 500,
+      arrows: true, dots: true, loop: true, pauseHover: true, dotStyle: 'dots', counter: false,
+      slides: [
+        { id: uid(), mode: 'photo', bg: '#3a270d', img: PHOTO, elements: [] },
+        { id: uid(), mode: 'color', bg: '#201f1d', img: PHOTO, elements: [] }
+      ],
+      slide: 0, elements: []
+    };
+    if (filled) {
+      p.elements = [this.mkEl('overlay'), this.mkEl('heading'), this.mkEl('text'), this.mkEl('button')];
+    }
+    return p;
+  }
+
+  newTemplate(name, desc) {
+    const bps = {};
+    Object.keys(DEVICES).forEach(k => {
+      bps[k] = { h: DEVICES[k].h, hMode: 'fixed', vh: 100, gutter: 0, bg: '#eae9e9', root: this.mkPanel(true) };
+    });
+    if (bps.mobile) {
+      bps.mobile.root.pad = 24;
+      bps.mobile.root.elements.forEach(e => {
+        if (e.type === 'heading') { e.fs = 30; e.measure = 18; }
+        if (e.type === 'text') { e.fs = 14; e.measure = 32; }
+      });
+    }
+    if (bps.tablet) bps.tablet.root.elements.forEach(e => { if (e.type === 'heading') e.fs = 38; });
+    return { id: uid(), name, desc: desc || 'No description.', created: 'Aug 26, 2026', bps };
+  }
+
+  slideIdxOf(node) {
+    if (node.type !== 'carousel') return 0;
+    const n = node.slides.length;
+    if (this.state.view === 'preview') {
+      const st = (this.play || (this.play = {}))[node.id];
+      return st ? Math.min(st.i, n - 1) : 0;
+    }
+    return Math.min(node.slide, n - 1);
+  }
+  hostFor(node) { return node.type === 'carousel' ? node.slides[this.slideIdxOf(node)] : node; }
+
+  bannerH(d, dev) {
+    return d.hMode === 'vh' ? Math.round(dev.vh * (d.vh || 100) / 100) : d.h;
+  }
+
+  cur() { return this.state.templates.find(t => t.id === this.state.curId) || null; }
+  bpData() { const t = this.cur(); return t ? t.bps[this.state.bp] : null; }
+  touch() { this.forceUpdate(); }
+
+  countPanels(node) { return node.kind === 'split' ? this.countPanels(node.a) + this.countPanels(node.b) : 1; }
+
+  findPanel(id) {
+    const d = this.bpData(); if (!d) return null;
+    const walk = n => n.kind === 'split' ? (walk(n.a) || walk(n.b)) : (n.id === id ? n : null);
+    return walk(d.root);
+  }
+  parentOf(node) {
+    const d = this.bpData();
+    const walk = n => {
+      if (n.kind !== 'split') return null;
+      if (n.a === node || n.b === node) return n;
+      return walk(n.a) || walk(n.b);
+    };
+    return walk(d.root);
+  }
+
+  split(panel, dir) {
+    const d = this.bpData();
+    const nb = this.mkPanel(false);
+    nb.bgMode = 'color';
+    nb.bg = '#eae9e9';
+    const sp = { id: uid(), kind: 'split', dir, ratio: 0.5, a: panel, b: nb };
+    const parent = this.parentOf(panel);
+    if (!parent) d.root = sp; else if (parent.a === panel) parent.a = sp; else parent.b = sp;
+    this.setState({ selPanel: nb.id, selEl: null });
+  }
+
+  removePanel(panel) {
+    const parent = this.parentOf(panel);
+    if (!parent) return;
+    const sibling = parent.a === panel ? parent.b : parent.a;
+    const gp = this.parentOf(parent);
+    const d = this.bpData();
+    if (!gp) d.root = sibling; else if (gp.a === parent) gp.a = sibling; else gp.b = sibling;
+    this.setState({ selPanel: null, selEl: null, hover: null });
+  }
+
+  clone(node) {
+    if (node.kind === 'split') return { ...node, id: uid(), a: this.clone(node.a), b: this.clone(node.b) };
+    return {
+      ...node, id: uid(),
+      slides: node.slides.map(s => ({ ...s, id: uid(), elements: (s.elements || []).map(e => ({ ...e, id: uid() })) })),
+      elements: node.elements.map(e => ({ ...e, id: uid() }))
+    };
+  }
+
+  /* ---------- interaction ---------- */
+  startDrag(node, rect, vertical, e) {
+    const frame = this.frameRef.current;
+    if (!frame) return;
+    const box = frame.getBoundingClientRect();
+    const span = vertical ? box.height * rect.h / 100 : box.width * rect.w / 100;
+    const start = vertical ? e.clientY : e.clientX;
+    const r0 = node.ratio;
+    const move = ev => {
+      const delta = ((vertical ? ev.clientY : ev.clientX) - start) / span;
+      node.ratio = Math.min(0.85, Math.max(0.15, r0 + delta));
+      this.forceUpdate();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  layout() {
+    const d = this.bpData();
+    const leaves = [], dividers = [];
+    if (!d) return { leaves, dividers };
+    const walk = (node, rect) => {
+      if (node.kind === 'split') {
+        const stacked = node.dir === 'rows';
+        const r = node.ratio;
+        if (stacked) {
+          const h1 = rect.h * r;
+          walk(node.a, { x: rect.x, y: rect.y, w: rect.w, h: h1 });
+          walk(node.b, { x: rect.x, y: rect.y + h1, w: rect.w, h: rect.h - h1 });
+          dividers.push({ node, rect, vertical: true, pos: rect.y + h1 });
+        } else {
+          const w1 = rect.w * r;
+          walk(node.a, { x: rect.x, y: rect.y, w: w1, h: rect.h });
+          walk(node.b, { x: rect.x + w1, y: rect.y, w: rect.w - w1, h: rect.h });
+          dividers.push({ node, rect, vertical: false, pos: rect.x + w1 });
+        }
+      } else leaves.push({ node, rect });
+    };
+    walk(d.root, { x: 0, y: 0, w: 100, h: 100 });
+    return { leaves, dividers };
+  }
+
+  /* ---------- fields ---------- */
+  fld(o) {
+    const k = o.kind || 'text';
+    return {
+      label: o.label, hint: o.hint || '', value: o.value, options: o.options || [],
+      onChange: o.onChange || (() => {}), min: o.min ?? 0, max: o.max ?? 100, step: o.step ?? 1,
+      isText: k === 'text', isArea: k === 'area', isNum: k === 'num', isColor: k === 'color',
+      isSeg: k === 'seg', isRange: k === 'range', isFile: k === 'file'
+    };
+  }
+  upload(apply) {
+    return e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      apply(URL.createObjectURL(file));
+      this.touch();
+    };
+  }
+  segOpts(list, current, pick) {
+    return list.map(([val, label]) => ({
+      label, style: this.segStyle(val === current), onPick: () => pick(val)
+    }));
+  }
+  segStyle(active) {
+    return {
+      font: '12px var(--font-body)', padding: '5px 10px', cursor: 'pointer', borderRadius: 'var(--radius-md)',
+      border: '1px solid ' + (active ? 'var(--color-accent)' : 'var(--color-divider)'),
+      color: active ? 'var(--color-accent-700)' : 'var(--color-text)',
+      background: active ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent'
+    };
+  }
+  transparentOpt(current, pick) {
+    const on = current === 'transparent';
+    return {
+      label: 'Transparent', onPick: () => pick('transparent'),
+      style: {
+        width: '28px', height: '28px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+        background: 'repeating-conic-gradient(#d9d7d7 0% 25%, #f8f4f4 0% 50%) 50% / 10px 10px',
+        border: '1px solid ' + (on ? 'var(--color-accent)' : 'var(--color-divider)'),
+        outline: on ? '2px solid var(--color-accent)' : 'none', outlineOffset: '1px'
+      }
+    };
+  }
+  colorOpts(current, pick) {
+    return SWATCH.map(([val, label]) => ({
+      label, onPick: () => pick(val),
+      style: {
+        width: '28px', height: '28px', borderRadius: 'var(--radius-md)', cursor: 'pointer', background: val,
+        border: '1px solid ' + (val === current ? 'var(--color-accent)' : 'var(--color-divider)'),
+        outline: val === current ? '2px solid var(--color-accent)' : 'none', outlineOffset: '1px'
+      }
+    }));
+  }
+
+  elFields(el) {
+    const set = (k, v) => { el[k] = v; this.touch(); };
+    const num = e => parseFloat(e.target.value) || 0;
+    const f = [];
+    if (el.type !== 'overlay') {
+      f.push(this.fld({
+        label: 'Position', kind: 'seg',
+        hint: el.pos ? Math.round(el.pos.x) + '%, ' + Math.round(el.pos.y) + '%' : 'drag on canvas to place',
+        options: this.segOpts([[false, 'In stack'], [true, 'Free']], !!el.pos, v => {
+          if (v) el.pos = el.pos || { x: 12, y: 12 }; else delete el.pos;
+          this.touch();
+        })
+      }));
+      if (el.pos) {
+        f.push(this.fld({ label: 'X', kind: 'range', min: 0, max: 96, value: el.pos.x, hint: Math.round(el.pos.x) + '%', onChange: e => { el.pos.x = parseFloat(e.target.value); this.touch(); } }));
+        f.push(this.fld({ label: 'Y', kind: 'range', min: 0, max: 96, value: el.pos.y, hint: Math.round(el.pos.y) + '%', onChange: e => { el.pos.y = parseFloat(e.target.value); this.touch(); } }));
+      }
+    }
+    if (el.type === 'heading' || el.type === 'text') {
+      f.push(this.fld({ label: 'Content', kind: 'area', value: el.text, onChange: e => set('text', e.target.value) }));
+      f.push(this.fld({ label: 'Size', kind: 'range', min: 11, max: 84, value: el.fs, hint: el.fs + 'px', onChange: e => set('fs', num(e)) }));
+      f.push(this.fld({ label: 'Weight', kind: 'seg', hint: el.weight, options: this.segOpts([[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Black']], el.weight, v => set('weight', v)) }));
+      f.push(this.fld({ label: 'Align', kind: 'seg', options: this.segOpts([['left', 'Left'], ['center', 'Center'], ['right', 'Right']], el.align, v => set('align', v)) }));
+      f.push(this.fld({ label: 'Measure', kind: 'range', min: 12, max: 60, value: el.measure, hint: el.measure + 'ch', onChange: e => set('measure', num(e)) }));
+      f.push(this.fld({ label: 'Colour', kind: 'color', options: this.colorOpts(el.color, v => set('color', v)) }));
+    } else if (el.type === 'button') {
+      f.push(this.fld({ label: 'Label', value: el.text, onChange: e => set('text', e.target.value) }));
+      f.push(this.fld({ label: 'Destination', value: el.href, onChange: e => set('href', e.target.value) }));
+      f.push(this.fld({ label: 'Style', kind: 'seg', options: this.segOpts([['primary', 'Outlined'], ['solid', 'Filled'], ['ghost', 'Ghost']], el.variant, v => set('variant', v)) }));
+      f.push(this.fld({ label: 'Size', kind: 'range', min: 11, max: 24, value: el.fs, hint: el.fs + 'px', onChange: e => set('fs', num(e)) }));
+      f.push(this.fld({ label: 'Corner', kind: 'range', min: 0, max: 24, value: el.radius, hint: el.radius + 'px', onChange: e => set('radius', num(e)) }));
+      f.push(this.fld({ label: 'Colour', kind: 'color', options: this.colorOpts(el.color, v => set('color', v)) }));
+    } else if (el.type === 'link') {
+      f.push(this.fld({ label: 'Label', value: el.text, onChange: e => set('text', e.target.value) }));
+      f.push(this.fld({ label: 'Destination', value: el.href, onChange: e => set('href', e.target.value) }));
+      f.push(this.fld({ label: 'Underline', kind: 'seg', options: this.segOpts([[true, 'On'], [false, 'Off']], el.underline, v => set('underline', v)) }));
+      f.push(this.fld({ label: 'Size', kind: 'range', min: 10, max: 24, value: el.fs, hint: el.fs + 'px', onChange: e => set('fs', num(e)) }));
+      f.push(this.fld({ label: 'Colour', kind: 'color', options: this.colorOpts(el.color, v => set('color', v)) }));
+    } else if (el.type === 'image') {
+      f.push(this.fld({ label: 'Upload image', kind: 'file', onChange: this.upload(url => set('src', url)) }));
+      f.push(this.fld({ label: 'Or image path', value: el.src, onChange: e => set('src', e.target.value) }));
+      f.push(this.fld({ label: 'Width', kind: 'range', min: 10, max: 100, value: el.width, hint: el.width + '%', onChange: e => set('width', num(e)) }));
+      f.push(this.fld({ label: 'Fit', kind: 'seg', options: this.segOpts([['cover', 'Cover'], ['contain', 'Contain']], el.fit, v => set('fit', v)) }));
+      f.push(this.fld({ label: 'Corner', kind: 'range', min: 0, max: 24, value: el.radius, hint: el.radius + 'px', onChange: e => set('radius', num(e)) }));
+      f.push(this.fld({ label: 'Plate mat', kind: 'seg', options: this.segOpts([[true, 'On'], [false, 'Off']], el.plate, v => set('plate', v)) }));
+      f.push(this.fld({ label: 'Links to', hint: 'optional', value: el.href, onChange: e => set('href', e.target.value) }));
+    } else if (el.type === 'overlay') {
+      f.push(this.fld({ label: 'Mode', kind: 'seg', options: this.segOpts([['solid', 'Flat'], ['gradient', 'Gradient']], el.mode, v => set('mode', v)) }));
+      f.push(this.fld({ label: 'Opacity', kind: 'range', min: 0, max: 1, step: 0.02, value: el.opacity, hint: Math.round(el.opacity * 100) + '%', onChange: e => set('opacity', num(e)) }));
+      f.push(this.fld({ label: 'Colour', kind: 'color', options: this.colorOpts(el.color, v => set('color', v)) }));
+    } else if (el.type === 'spacer') {
+      f.push(this.fld({ label: 'Height', kind: 'range', min: 4, max: 120, value: el.size, hint: el.size + 'px', onChange: e => set('size', num(e)) }));
+    } else {
+      f.push(this.fld({ label: 'Glyph', kind: 'seg', options: this.segOpts([['arrow', 'Arrow'], ['star', 'Star'], ['check', 'Check'], ['book', 'Book']], el.glyph, v => set('glyph', v)) }));
+      f.push(this.fld({ label: 'Size', kind: 'range', min: 14, max: 72, value: el.fs, hint: el.fs + 'px', onChange: e => set('fs', num(e)) }));
+      f.push(this.fld({ label: 'Colour', kind: 'color', options: this.colorOpts(el.color, v => set('color', v)) }));
+    }
+    return f;
+  }
+
+  panelFields(p) {
+    const set = (k, v) => { p[k] = v; this.touch(); };
+    const num = e => parseFloat(e.target.value) || 0;
+    const f = [
+      this.fld({
+        label: 'Banner type', kind: 'seg',
+        hint: p.type === 'carousel' ? 'editing slide ' + (p.slide + 1) : '',
+        options: this.segOpts([['single', 'Single image'], ['carousel', 'Carousel']], p.type, v => {
+          if (v === 'carousel' && !p.slides[0].elements.length && p.elements.length) {
+            p.slides[0].elements = p.elements.map(e => ({ ...e, id: uid() }));
+          }
+          set('type', v);
+          this.setState({ selEl: null });
+        })
+      }),
+      this.fld({ label: 'Background', kind: 'seg', options: this.segOpts([['photo', 'Image'], ['color', 'Colour']], p.bgMode, v => set('bgMode', v)) }),
+      this.fld({ label: 'Background colour', kind: 'color', options: [this.transparentOpt(p.bg, v => set('bg', v))].concat(this.colorOpts(p.bg, v => set('bg', v))) }),
+      this.fld({
+        label: p.type === 'carousel' ? 'Upload image — slide ' + (p.slide + 1) : 'Upload background image',
+        kind: 'file', hint: p.type === 'carousel' ? 'JPG or PNG' : 'JPG or PNG',
+        onChange: this.upload(url => {
+          if (p.type === 'carousel') { const sl = p.slides[p.slide]; sl.img = url; sl.mode = 'photo'; }
+          else { p.img = url; p.bgMode = 'photo'; }
+        })
+      }),
+      this.fld({ label: 'Corner radius', kind: 'range', min: 0, max: 48, value: p.radius || 0, hint: (p.radius || 0) + 'px', onChange: e => set('radius', num(e)) }),
+      this.fld({ label: 'Border width', kind: 'range', min: 0, max: 12, value: p.borderW || 0, hint: (p.borderW || 0) + 'px', onChange: e => set('borderW', num(e)) }),
+      this.fld({ label: 'Border colour', kind: 'color', options: this.colorOpts(p.borderColor, v => set('borderColor', v)) }),
+      this.fld({ label: 'Padding', kind: 'range', min: 0, max: 96, value: p.pad, hint: p.pad + 'px', onChange: e => set('pad', num(e)) }),
+      this.fld({ label: 'Gap', kind: 'range', min: 0, max: 48, value: p.gap, hint: p.gap + 'px', onChange: e => set('gap', num(e)) }),
+      this.fld({ label: 'Horizontal', kind: 'seg', options: this.segOpts([['flex-start', 'Left'], ['center', 'Centre'], ['flex-end', 'Right']], p.alignX, v => set('alignX', v)) }),
+      this.fld({ label: 'Vertical', kind: 'seg', options: this.segOpts([['flex-start', 'Top'], ['center', 'Middle'], ['flex-end', 'Bottom']], p.alignY, v => set('alignY', v)) })
+    ];
+    if (p.type === 'carousel') {
+      f.push(this.fld({ label: 'Autoplay', kind: 'seg', options: this.segOpts([[true, 'On'], [false, 'Off']], p.autoplay, v => set('autoplay', v)) }));
+      f.push(this.fld({ label: 'Slide duration', kind: 'range', min: 1000, max: 12000, step: 500, value: p.interval, hint: (p.interval / 1000).toFixed(1) + 's', onChange: e => set('interval', num(e)) }));
+      f.push(this.fld({ label: 'Transition', kind: 'seg', options: this.segOpts([['fade', 'Fade'], ['slide', 'Slide'], ['none', 'Cut']], p.transition, v => set('transition', v)) }));
+      f.push(this.fld({ label: 'Transition speed', kind: 'range', min: 100, max: 1600, step: 50, value: p.speed, hint: p.speed + 'ms', onChange: e => set('speed', num(e)) }));
+      f.push(this.fld({ label: 'Loop', kind: 'seg', hint: 'wrap past the last slide', options: this.segOpts([[true, 'On'], [false, 'Off']], p.loop, v => set('loop', v)) }));
+      f.push(this.fld({ label: 'Pause on hover', kind: 'seg', options: this.segOpts([[true, 'On'], [false, 'Off']], p.pauseHover, v => set('pauseHover', v)) }));
+      f.push(this.fld({ label: 'Arrows', kind: 'seg', options: this.segOpts([[true, 'Show'], [false, 'Hide']], p.arrows, v => set('arrows', v)) }));
+      f.push(this.fld({ label: 'Pagination', kind: 'seg', options: this.segOpts([['dots', 'Dots'], ['bars', 'Bars'], ['none', 'None']], p.dots === false ? 'none' : p.dotStyle, v => { p.dots = v !== 'none'; if (v !== 'none') p.dotStyle = v; this.touch(); }) }));
+      f.push(this.fld({ label: 'Slide counter', kind: 'seg', hint: '1 / 3', options: this.segOpts([[true, 'Show'], [false, 'Hide']], p.counter, v => set('counter', v)) }));
+      f.push(this.fld({
+        label: 'Slide ' + (p.slide + 1) + ' links to', hint: 'whole slide clickable',
+        value: p.slides[p.slide].href || '',
+        onChange: e => { p.slides[p.slide].href = e.target.value; this.touch(); }
+      }));
+    } else {
+      f.push(this.fld({ label: 'Banner links to', hint: 'optional', value: p.href || '', onChange: e => set('href', e.target.value) }));
+    }
+    return f;
+  }
+
+  /* ---------- element render values ---------- */
+  elVals(panel, el, editing) {
+    const sel = this.state.selEl === el.id;
+    const ring = editing ? { outline: sel ? '2px solid var(--color-accent)' : '1px dashed transparent', outlineOffset: '3px', cursor: 'pointer' } : {};
+    const select = editing ? (e => { e.stopPropagation(); this.setState({ selPanel: panel.id, selEl: el.id }); }) : undefined;
+    const v = { isOverlay: false, isHeading: false, isText: false, isButton: false, isLink: false, isImage: false, isSpacer: false, isIcon: false, select, text: el.text, src: el.src, path: ICONS[el.glyph], drag: editing && el.type !== 'overlay' ? this.dragEl(panel, el) : undefined };
+    const placed = el.pos && el.type !== 'overlay'
+      ? { position: 'absolute', left: el.pos.x + '%', top: el.pos.y + '%', margin: 0, zIndex: 3 }
+      : null;
+    if (el.type === 'overlay') {
+      v.isOverlay = true;
+      v.style = {
+        position: 'absolute', inset: 0, zIndex: 1, pointerEvents: editing ? 'auto' : 'none',
+        background: el.mode === 'gradient'
+          ? 'linear-gradient(105deg, ' + el.color + ' 8%, color-mix(in srgb, ' + el.color + ' 10%, transparent) 82%)'
+          : el.color,
+        opacity: el.opacity, ...ring
+      };
+      return v;
+    }
+    const common = { position: 'relative', zIndex: 2, margin: 0, ...ring, ...(placed || {}), cursor: editing ? 'move' : (el.href ? 'pointer' : 'default') };
+    if (el.type === 'heading') {
+      v.isHeading = true;
+      v.style = { ...common, fontFamily: 'var(--font-heading)', fontWeight: el.weight, fontSize: el.fs + 'px', lineHeight: 1.1, color: el.color, textAlign: el.align, maxWidth: el.measure + 'ch', textWrap: 'pretty' };
+    } else if (el.type === 'text') {
+      v.isText = true;
+      v.style = { ...common, fontFamily: 'var(--font-body)', fontWeight: el.weight, fontSize: el.fs + 'px', lineHeight: 1.65, color: el.color, textAlign: el.align, maxWidth: el.measure + 'ch', textWrap: 'pretty' };
+    } else if (el.type === 'button') {
+      v.isButton = true;
+      const solid = el.variant === 'solid';
+      v.style = {
+        ...common, fontFamily: 'var(--font-body)', fontSize: el.fs + 'px', letterSpacing: '.02em',
+        padding: '10px 20px', borderRadius: el.radius + 'px', cursor: 'pointer',
+        color: solid ? '#201f1d' : el.color,
+        background: solid ? el.color : 'transparent',
+        border: el.variant === 'ghost' ? '1px solid transparent' : '1px solid ' + el.color
+      };
+    } else if (el.type === 'link') {
+      v.isLink = true;
+      v.style = { ...common, fontFamily: 'var(--font-body)', fontSize: el.fs + 'px', color: el.color, textDecoration: el.underline ? 'underline' : 'none', textUnderlineOffset: '3px', cursor: 'pointer' };
+    } else if (el.type === 'image') {
+      v.isImage = true;
+      v.style = {
+        ...common, width: el.width + '%', flex: '1 1 auto', minHeight: '60px', alignSelf: 'stretch',
+        background: 'url(' + el.src + ') center/' + el.fit + ' no-repeat', borderRadius: el.radius + 'px',
+        border: el.plate ? '6px solid var(--color-surface)' : '0', filter: el.plate ? 'sepia(0.22) saturate(0.82) contrast(1.05)' : 'none', boxSizing: 'border-box'
+      };
+    } else if (el.type === 'spacer') {
+      v.isSpacer = true;
+      v.style = { ...common, height: el.size + 'px', width: '100%', flex: '0 0 auto', background: editing ? 'repeating-linear-gradient(45deg, color-mix(in srgb, #f8f4f4 22%, transparent) 0 4px, transparent 4px 8px)' : 'transparent' };
+    } else {
+      v.isIcon = true;
+      v.style = { ...common, width: el.fs + 'px', height: el.fs + 'px', color: el.color, flex: '0 0 auto' };
+    }
+    return v;
+  }
+
+  /* ---------- main ---------- */
+  renderVals() {
+    const s = this.state;
+    const t = this.cur();
+    const d = this.bpData();
+    const dev = DEVICES[s.bp];
+    const editing = s.view === 'editor';
+    const { leaves, dividers } = this.layout();
+    const panelIndex = {};
+    leaves.forEach((l, i) => { panelIndex[l.node.id] = i + 1; });
+
+    const gut = d ? (d.gutter || 0) : 0;
+    const bh = d ? this.bannerH(d, dev) : 0;
+    const frameStyle = d ? {
+      position: 'relative', width: dev.w + 'px', height: bh + 'px', overflow: 'hidden',
+      transform: 'scale(' + dev.scale + ')', transformOrigin: 'top left',
+      background: d.bg === 'transparent'
+        ? (editing ? 'repeating-conic-gradient(#d9d7d7 0% 25%, #f8f4f4 0% 50%) 50% / 16px 16px' : 'transparent')
+        : (d.bg || 'var(--color-neutral-100)'),
+      border: '1px solid var(--color-divider)'
+    } : {};
+    const frameOuter = d ? { width: dev.w * dev.scale + 'px', height: bh * dev.scale + 'px', flex: '0 0 auto', boxShadow: 'var(--shadow-md)', margin: '0 auto' } : {};
+
+    const selEl = (() => {
+      for (const l of leaves) {
+        const host = this.hostFor(l.node);
+        const e = host.elements.find(x => x.id === s.selEl);
+        if (e) return { panel: l.node, host, el: e };
+      }
+      return null;
+    })();
+    const selPanel = this.findPanel(s.selPanel);
+
+    const vals = {
+      isTemplates: s.view === 'templates',
+      isEditor: editing,
+      isPreview: s.view === 'preview',
+      hasTemplates: s.templates.length > 0,
+      noTemplates: s.templates.length === 0,
+      dialog: s.dialog, dName: s.dName, dDesc: s.dDesc,
+      createDisabled: s.dName.trim().length === 0,
+      openDialog: () => this.setState({ dialog: true, dName: '', dDesc: '' }),
+      closeDialog: () => this.setState({ dialog: false }),
+      onName: e => this.setState({ dName: e.target.value }),
+      onDesc: e => this.setState({ dDesc: e.target.value }),
+      createTemplate: () => {
+        const nt = this.newTemplate(s.dName.trim(), s.dDesc.trim());
+        this.setState(st => ({ templates: [...st.templates, nt], dialog: false, view: 'editor', curId: nt.id, bp: 'laptop', selPanel: nt.bps.laptop.root.id, selEl: null }));
+      },
+      templates: s.templates.map(tp => ({
+        name: tp.name, desc: tp.desc,
+        meta: 'Created ' + tp.created,
+        panelLabel: this.countPanels(tp.bps.laptop.root) + ' panels',
+        open: () => this.setState({ view: 'editor', curId: tp.id, bp: 'laptop', selPanel: tp.bps.laptop.root.id, selEl: null })
+      })),
+      curName: t ? t.name : '',
+      canvasLabel: dev.label + ' · ' + dev.w + 'px × ' + bh + 'px' + (d && d.hMode === 'vh' ? ' · ' + (d.vh || 100) + '% of screen' : ''),
+      bpOptions: Object.keys(DEVICES).map(k => ({
+        label: DEVICES[k].label,
+        onPick: () => this.setState({ bp: k, selPanel: null, selEl: null, hover: null }),
+        style: this.segStyle(k === s.bp),
+        darkStyle: {
+          font: '12px var(--font-body)', padding: '5px 11px', cursor: 'pointer', borderRadius: 'var(--radius-md)',
+          border: '1px solid ' + (k === s.bp ? 'var(--color-accent-400)' : 'var(--color-neutral-700)'),
+          color: k === s.bp ? 'var(--color-accent-300)' : 'var(--color-neutral-400)', background: 'transparent'
+        }
+      })),
+      gutterVal: gut,
+      gutterHint: gut + 'px',
+      onGutter: e => { d.gutter = parseInt(e.target.value, 10); this.touch(); },
+      gutterColors: d ? [this.transparentOpt(d.bg, v => { d.bg = v; this.touch(); })].concat(this.colorOpts(d.bg, v => { d.bg = v; this.touch(); })) : [],
+      selectTemplate: () => this.setState({ selPanel: null, selEl: null }),
+      templateRowStyle: {
+        textAlign: 'left', font: '12.5px var(--font-body)', padding: '5px 7px', cursor: 'pointer',
+        border: '1px solid ' + (!s.selPanel && !s.selEl ? 'var(--color-accent)' : 'transparent'),
+        borderRadius: 'var(--radius-md)',
+        background: !s.selPanel && !s.selEl ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+        color: 'var(--color-text)'
+      },
+      heightVal: d ? (d.hMode === 'vh' ? (d.vh || 100) : d.h) : 0,
+      heightUnit: d && d.hMode === 'vh' ? '% of screen' : 'px',
+      heightModes: d ? this.segOpts([['fixed', 'Fixed'], ['vh', 'Viewport']], d.hMode || 'fixed', v => { d.hMode = v; this.touch(); }) : [],
+      heightResolved: bh + 'px tall on ' + dev.label.toLowerCase(),
+      onHeight: e => {
+        const n = parseInt(e.target.value, 10) || 0;
+        if (d.hMode === 'vh') d.vh = Math.max(10, Math.min(100, n));
+        else d.h = Math.max(120, n);
+        this.touch();
+      },
+      goPreview: () => this.setState({ view: 'preview', selEl: null, hover: null }),
+      exitPreview: () => this.setState({ view: 'editor' }),
+      backToList: () => this.setState({ view: 'templates', selPanel: null, selEl: null }),
+      frameRef: this.frameRef, frameStyle, frameOuter,
+      noPanelSelected: !selPanel,
+      bpNote: s.bp === 'laptop'
+        ? 'Laptop is the layout you build first. Tab and mobile each keep their own panels and settings.'
+        : DEVICES[s.bp].label + ' has its own independent layout. Changes here do not affect the other breakpoints.',
+      copyTargets: Object.keys(DEVICES).filter(k => k !== s.bp).map(k => ({
+        label: 'Copy to ' + DEVICES[k].label,
+        onPick: () => this.setState({ copyTo: k })
+      })),
+      confirmCopy: !!s.copyTo,
+      copyFromLabel: dev.label,
+      copyToLabel: s.copyTo ? DEVICES[s.copyTo].label : '',
+      copyPanelCount: d ? this.countPanels(d.root) + (this.countPanels(d.root) === 1 ? ' panel' : ' panels') : '',
+      cancelCopy: () => this.setState({ copyTo: null }),
+      applyCopy: () => {
+        const to = s.copyTo;
+        t.bps[to].root = this.clone(d.root);
+        t.bps[to].h = d.h;
+        t.bps[to].hMode = d.hMode;
+        t.bps[to].vh = d.vh;
+        t.bps[to].gutter = d.gutter;
+        t.bps[to].bg = d.bg;
+        this.setState({ copyTo: null, bp: to, selPanel: null, selEl: null, hover: null });
+      },
+      toolbox: [['heading', 'Heading'], ['text', 'Text'], ['button', 'Button'], ['link', 'Link'], ['image', 'Image'], ['overlay', 'Overlay'], ['spacer', 'Spacer'], ['icon', 'Icon']].map(([type, label]) => ({
+        label, disabled: !selPanel,
+        onAdd: () => {
+          if (!selPanel) return;
+          const host = this.hostFor(selPanel);
+          const el = this.mkEl(type);
+          if (type === 'overlay') host.elements.unshift(el); else host.elements.push(el);
+          this.setState({ selEl: el.id });
+        }
+      })),
+      dividers: dividers.map(dv => ({
+        style: dv.vertical
+          ? { position: 'absolute', left: dv.rect.x + '%', top: 'calc(' + dv.pos + '% - 3px)', width: dv.rect.w + '%', height: '6px', cursor: 'row-resize', zIndex: 25, background: 'color-mix(in srgb, var(--color-accent) 32%, transparent)' }
+          : { position: 'absolute', top: dv.rect.y + '%', left: 'calc(' + dv.pos + '% - 3px)', height: dv.rect.h + '%', width: '6px', cursor: 'col-resize', zIndex: 25, background: 'color-mix(in srgb, var(--color-accent) 32%, transparent)' },
+        down: e => this.startDrag(dv.node, dv.rect, dv.vertical, e)
+      })),
+      leaves: leaves.map(({ node, rect }) => {
+        const isSel = node.id === s.selPanel;
+        const isHover = node.id === s.hover;
+        const slideIdx = this.slideIdxOf(node);
+        const carousel = node.type === 'carousel';
+        const slide = carousel ? node.slides[slideIdx] : { mode: node.bgMode, bg: node.bg, img: node.img, href: node.href, elements: node.elements };
+        const host = carousel ? slide : node;
+        const sources = carousel ? node.slides : [slide];
+        const ease = carousel ? node.transition : 'none';
+        const dur = carousel && ease !== 'none' ? node.speed : 0;
+        const layers = sources.map((sl, i) => {
+          const active = i === slideIdx;
+          const off = ease === 'slide' ? ((i - slideIdx) * 100) + '%' : '0';
+          return {
+            layerStyle: {
+              position: 'absolute', inset: 0, zIndex: active ? 2 : 1,
+              opacity: ease === 'fade' || ease === 'none' ? (active ? 1 : 0) : 1,
+              transform: 'translateX(' + off + ')',
+              transition: dur ? 'opacity ' + dur + 'ms ease, transform ' + dur + 'ms cubic-bezier(.4,0,.2,1)' : 'none',
+              pointerEvents: active ? 'auto' : 'none'
+            },
+            bgStyle: {
+              position: 'absolute', inset: 0, zIndex: 0,
+              background: sl.mode === 'photo' ? 'url(' + (sl.img || PHOTO) + ') center/cover no-repeat' : sl.bg,
+              filter: sl.mode === 'photo' ? 'sepia(0.22) saturate(0.82) contrast(1.05)' : 'none'
+            },
+            stackStyle: {
+              position: 'absolute', inset: 0, zIndex: 2, display: 'flex', flexDirection: 'column',
+              cursor: (carousel ? sl.href : node.href) && !editing ? 'pointer' : 'default',
+              alignItems: node.alignX, justifyContent: node.alignY, gap: node.gap + 'px',
+              padding: node.pad + 'px', boxSizing: 'border-box'
+            },
+            elements: (sl.elements || []).map(el => this.elVals(node, el, editing && active))
+          };
+        });
+        const navBtn = side => ({
+          position: 'absolute', top: '50%', [side]: '12px', transform: 'translateY(-50%)', zIndex: 7,
+          width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0, cursor: 'pointer', borderRadius: '50%', color: '#f8f4f4',
+          border: '1px solid color-mix(in srgb, #f8f4f4 70%, transparent)',
+          background: 'color-mix(in srgb, #201f1d 35%, transparent)', font: '15px var(--font-body)', lineHeight: 1
+        });
+        return {
+          label: 'Panel ' + panelIndex[node.id] + (node.type === 'carousel' ? ' · slide ' + (slideIdx + 1) : ''),
+          frameStyle: {
+            position: 'absolute',
+            left: 'calc(' + rect.x + '% + ' + gut / 2 + 'px)',
+            top: 'calc(' + rect.y + '% + ' + gut / 2 + 'px)',
+            width: 'calc(' + rect.w + '% - ' + gut + 'px)',
+            height: 'calc(' + rect.h + '% - ' + gut + 'px)',
+            overflow: 'hidden', boxSizing: 'border-box',
+            borderRadius: (node.radius || 0) + 'px',
+            border: (node.borderW || 0) ? (node.borderW + 'px solid ' + node.borderColor) : '0',
+            outline: editing ? (isSel ? '2px solid var(--color-accent)' : (isHover ? '1px solid color-mix(in srgb, var(--color-accent) 50%, transparent)' : '1px solid var(--color-divider)')) : 'none',
+            outlineOffset: '-1px', cursor: editing ? 'pointer' : 'default',
+            transition: 'border-radius 160ms ease'
+          },
+          layers,
+          isCarousel: carousel,
+          showDots: carousel && node.dots !== false,
+          showArrows: carousel && node.arrows !== false && node.slides.length > 1,
+          showCounter: carousel && !!node.counter,
+          counterText: (slideIdx + 1) + ' / ' + (carousel ? node.slides.length : 1),
+          counterStyle: {
+            position: 'absolute', zIndex: 7, top: '12px', right: '12px', padding: '3px 9px', borderRadius: '2px',
+            font: '11px var(--font-body)', letterSpacing: '.08em', color: '#f8f4f4',
+            background: 'color-mix(in srgb, #201f1d 40%, transparent)', fontFeatureSettings: '"tnum"'
+          },
+          prevStyle: navBtn('left'), nextStyle: navBtn('right'),
+          prev: e => { e.stopPropagation(); this.step(node, -1); },
+          next: e => { e.stopPropagation(); this.step(node, 1); },
+          dotsStyle: { position: 'absolute', zIndex: 7, bottom: '14px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '7px', alignItems: 'center' },
+          dots: (carousel ? node.slides : []).map((sl, i) => ({
+            style: node.dotStyle === 'bars'
+              ? { width: '26px', height: '3px', padding: 0, borderRadius: '2px', cursor: 'pointer', border: 0, background: i === slideIdx ? '#f8f4f4' : 'color-mix(in srgb, #f8f4f4 40%, transparent)' }
+              : { width: '9px', height: '9px', padding: 0, borderRadius: '50%', cursor: 'pointer', border: '1px solid #f8f4f4', background: i === slideIdx ? '#f8f4f4' : 'transparent' },
+            onPick: e => {
+              e.stopPropagation();
+              if (s.view === 'preview') {
+                const st = this.play[node.id] || (this.play[node.id] = { i: 0, at: Date.now() });
+                st.i = i; st.at = Date.now();
+                this.setState(v2 => ({ tick: v2.tick + 1 }));
+              } else {
+                node.slide = i;
+                this.setState({ selPanel: node.id, selEl: null });
+              }
+            }
+          })),
+          hoverIn: () => { const st = this.play[node.id] || (this.play[node.id] = { i: 0, at: Date.now() }); st.hover = true; },
+          hoverOut: () => { const st = this.play[node.id]; if (st) { st.hover = false; st.at = Date.now(); } },
+          showTools: editing && (isSel || isHover),
+          showBadge: editing && isSel,
+          canRemove: leaves.length > 1,
+          select: editing ? (e => { e.stopPropagation(); this.setState({ selPanel: node.id, selEl: null }); }) : undefined,
+          enter: editing ? (() => this.setState({ hover: node.id })) : undefined,
+          leave: editing ? (() => this.setState(st => (st.hover === node.id ? { hover: null } : null))) : undefined,
+          splitCols: e => { e.stopPropagation(); this.split(node, 'cols'); },
+          splitRows: e => { e.stopPropagation(); this.split(node, 'rows'); },
+          remove: e => { e.stopPropagation(); this.removePanel(node); }
+        };
+      }),
+      layers: [],
+      fields: [],
+      inspKicker: 'Nothing selected',
+      inspTitle: 'Inspector',
+      showSlides: false, slides: [], addSlide: () => {},
+      showElDelete: false, deleteEl: () => {},
+      showPanelDelete: false, deletePanel: () => {}, panelDeleteNote: '', panelDeleteOff: true
+    };
+
+    if (selEl) {
+      vals.inspKicker = 'Panel ' + (panelIndex[selEl.panel.id] || 1)
+        + (selEl.panel.type === 'carousel' ? ' · slide ' + (selEl.panel.slide + 1) : '') + ' element';
+      vals.inspTitle = selEl.el.type.charAt(0).toUpperCase() + selEl.el.type.slice(1);
+      vals.fields = this.elFields(selEl.el);
+      vals.showElDelete = true;
+      vals.deleteEl = () => {
+        selEl.host.elements = selEl.host.elements.filter(x => x.id !== selEl.el.id);
+        this.setState({ selEl: null });
+      };
+    } else if (selPanel) {
+      vals.inspKicker = 'Panel ' + (panelIndex[selPanel.id] || 1);
+      vals.inspTitle = selPanel.type === 'carousel' ? 'Carousel banner' : 'Single banner';
+      vals.fields = this.panelFields(selPanel);
+      vals.showPanelDelete = true;
+      vals.panelDeleteNote = leaves.length > 1
+        ? 'Removing this panel gives its space back to the panel it was split from.'
+        : 'A banner needs at least one panel, so this one cannot be deleted.';
+      vals.panelDeleteOff = leaves.length <= 1;
+      vals.deletePanel = () => { if (leaves.length > 1) this.removePanel(selPanel); };
+      vals.showSlides = selPanel.type === 'carousel';
+      vals.slides = selPanel.slides.map((sl, i) => ({
+        label: 'Slide ' + (i + 1) + ' · ' + (sl.elements || []).length + ' items' + (sl.href ? ' · linked' : '') + (i === selPanel.slide ? ' · editing' : ''),
+        rowStyle: { display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' },
+        thumbStyle: {
+          width: '40px', height: '26px', flex: '0 0 auto', cursor: 'pointer', borderRadius: '2px',
+          background: sl.mode === 'photo' ? 'url(' + (sl.img || PHOTO) + ') center/cover' : sl.bg,
+          border: '1px solid ' + (i === selPanel.slide ? 'var(--color-accent)' : 'var(--color-divider)')
+        },
+        select: () => { selPanel.slide = i; this.setState({ selEl: null }); },
+        removable: selPanel.slides.length > 1,
+        remove: () => { selPanel.slides = selPanel.slides.filter(x => x.id !== sl.id); selPanel.slide = 0; this.setState({ selEl: null }); }
+      }));
+      vals.addSlide = () => {
+        selPanel.slides.push({ id: uid(), mode: selPanel.slides.length % 2 ? 'photo' : 'color', bg: '#3a270d', img: PHOTO, elements: [] });
+        selPanel.slide = selPanel.slides.length - 1;
+        this.touch();
+      };
+    } else if (t) {
+      vals.inspKicker = 'Template';
+      vals.inspTitle = t.name;
+      vals.fields = [
+        this.fld({ label: 'Template name', value: t.name, onChange: e => { t.name = e.target.value; this.touch(); } }),
+        this.fld({ label: 'Description', kind: 'area', value: t.desc, onChange: e => { t.desc = e.target.value; this.touch(); } }),
+        this.fld({ label: 'Height mode', kind: 'seg', hint: bh + 'px here', options: this.segOpts([['fixed', 'Fixed'], ['vh', 'Viewport']], d.hMode || 'fixed', v => { d.hMode = v; this.touch(); }) }),
+        d.hMode === 'vh'
+          ? this.fld({ label: 'Share of screen', kind: 'range', min: 20, max: 100, step: 5, value: d.vh || 100, hint: (d.vh || 100) + '%', onChange: e => { d.vh = parseInt(e.target.value, 10); this.touch(); } })
+          : this.fld({ label: 'Banner height', kind: 'range', min: 160, max: 720, value: d.h, hint: d.h + 'px', onChange: e => { d.h = parseInt(e.target.value, 10); this.touch(); } }),
+        this.fld({ label: 'Space between panels', kind: 'range', min: 0, max: 48, value: d.gutter || 0, hint: (d.gutter || 0) + 'px', onChange: e => { d.gutter = parseInt(e.target.value, 10); this.touch(); } }),
+        this.fld({ label: 'Colour behind panels', kind: 'color', hint: 'shows in the gaps', options: [this.transparentOpt(d.bg, v => { d.bg = v; this.touch(); })].concat(this.colorOpts(d.bg, v => { d.bg = v; this.touch(); })) })
+      ];
+    }
+
+    const layers = [];
+    leaves.forEach(({ node }) => {
+      const pSel = node.id === s.selPanel && !s.selEl;
+      const host = this.hostFor(node);
+      layers.push({
+        label: 'Panel ' + panelIndex[node.id] + (node.type === 'carousel' ? ' · carousel, slide ' + (this.slideIdxOf(node) + 1) : ''),
+        rowStyle: { display: 'flex', alignItems: 'center', gap: '4px' },
+        btnStyle: {
+          flex: 1, textAlign: 'left', font: '12.5px var(--font-body)', padding: '5px 7px', cursor: 'pointer',
+          border: '1px solid ' + (pSel ? 'var(--color-accent)' : 'transparent'), borderRadius: 'var(--radius-md)',
+          background: pSel ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+          color: 'var(--color-text)'
+        },
+        select: () => this.setState({ selPanel: node.id, selEl: null, hover: null }),
+        removable: leaves.length > 1,
+        remove: () => this.removePanel(node)
+      });
+      if (node.type === 'carousel') {
+        node.slides.forEach((sl, i) => {
+          const sSel = i === this.slideIdxOf(node) && node.id === s.selPanel;
+          layers.push({
+            label: '▸ Slide ' + (i + 1) + ' · ' + (sl.elements || []).length + ' items',
+            rowStyle: { display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: '8px' },
+            btnStyle: {
+              flex: 1, textAlign: 'left', font: '12px var(--font-body)', padding: '4px 7px', cursor: 'pointer',
+              border: '1px solid ' + (sSel ? 'var(--color-accent)' : 'transparent'), borderRadius: 'var(--radius-md)',
+              background: sSel ? 'color-mix(in srgb, var(--color-accent) 8%, transparent)' : 'transparent',
+              color: 'var(--color-text)'
+            },
+            select: () => { node.slide = i; this.setState({ selPanel: node.id, selEl: null }); },
+            removable: node.slides.length > 1,
+            remove: () => {
+              node.slides = node.slides.filter(x => x.id !== sl.id);
+              node.slide = 0;
+              this.setState({ selPanel: node.id, selEl: null });
+            }
+          });
+        });
+      }
+      host.elements.forEach(el => {
+        const eSel = el.id === s.selEl;
+        layers.push({
+          label: '— ' + (el.text ? el.type + ': ' + el.text.slice(0, 14) : el.type) + (el.pos ? ' ·free' : ''),
+          rowStyle: { display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: node.type === 'carousel' ? '20px' : '10px' },
+          btnStyle: {
+            flex: 1, textAlign: 'left', font: '12px var(--font-body)', padding: '4px 7px', cursor: 'pointer',
+            border: '1px solid ' + (eSel ? 'var(--color-accent)' : 'transparent'), borderRadius: 'var(--radius-md)',
+            background: eSel ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+            color: 'color-mix(in srgb, var(--color-text) 80%, transparent)'
+          },
+          select: () => this.setState({ selPanel: node.id, selEl: el.id }),
+          removable: true,
+          remove: () => { host.elements = host.elements.filter(x => x.id !== el.id); this.setState({ selEl: null }); }
+        });
+      });
+    });
+    vals.layers = layers;
+    return vals;
+  }
+}
+
+</script>
+</body>
+</html>
