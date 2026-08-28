@@ -269,8 +269,8 @@ Pass `renderIcon` to use your own set.
 | `react-bannerkit` | Types, `createDefaultTemplate`, `normalizeTemplate`, tree and layout helpers. No React. |
 | `react-bannerkit/builder` | `<BannerBuilder>` and the editor state layer. |
 | `react-bannerkit/renderer` | `<BannerRenderer>`, `<Carousel>`, the icon set. |
-| `react-bannerkit/builder.css` | The editor's stylesheet. |
-| `react-bannerkit/renderer.css` | The renderer's stylesheet, ~6.5kB, no Tailwind. |
+| `react-bannerkit/builder.css` | The editor's stylesheet. Includes the renderer's rules, because the editor draws real banners on its canvas and in preview — so this is the only import an admin screen needs. |
+| `react-bannerkit/renderer.css` | The renderer's stylesheet, ~8kB, no Tailwind. Needed on pages that use `<BannerRenderer>` without the editor. |
 
 The renderer entry contains no editor code — a build-time check walks its import
 graph and fails if any appears.

@@ -13,7 +13,7 @@
  */
 import postcss, { type Rule } from 'postcss'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { BUILDER_SCOPE, RENDERER_SCOPE, compileCss } from '../../scripts/build-css.mjs'
+import { BUILDER_SCOPE, RENDERER_SCOPE, compileCss, composeCss } from '../../scripts/build-css.mjs'
 
 /** At-rules whose child selectors are keyframe stops, not element selectors. */
 const KEYFRAME_AT_RULES = new Set(['keyframes', '-webkit-keyframes'])
@@ -272,5 +272,49 @@ describe('renderer.css', () => {
   test('contains no Tailwind utility classes, being hand-written', () => {
     // Tailwind's escaped-colon variants are the giveaway, e.g. `.md\:flex`.
     expect(css).not.toMatch(/\\:/)
+  })
+})
+
+/*
+ * What a consumer who follows the README actually loads for the editor.
+ *
+ * These exist because of a real integration failure: an app imported only
+ * `builder.css`, and the editor came up looking entirely correct except that
+ * `.bnbr-panel` never received `position: absolute`. Panels stacked down the
+ * page instead of dividing the banner, so splitting appeared to add blank space
+ * below it. Nothing threw, and every piece of editor chrome was perfect, which
+ * is what made it read as a bug in the split rather than a missing stylesheet.
+ */
+describe('the shipped builder.css', () => {
+  let css = ''
+
+  beforeAll(async () => {
+    css = await composeCss('builder')
+  }, 120_000)
+
+  test('carries the renderer rules, so the editor needs no second import', () => {
+    const panel = selectorsOf(css).find((s) => s.includes('bnbr-panel'))
+    expect(panel, 'no .bnbr-panel rule in the shipped builder stylesheet').toBeTruthy()
+
+    // The specific declaration whose absence caused the failure.
+    let absolute = false
+    postcss.parse(css).walkRules((rule) => {
+      if (!rule.selector.includes('bnbr-panel')) return
+      rule.walkDecls('position', (d) => {
+        if (d.value === 'absolute') absolute = true
+      })
+    })
+    expect(absolute, '.bnbr-panel must be positioned by builder.css alone').toBe(true)
+  })
+
+  test('still cannot match anything outside the package, scope for scope', () => {
+    /*
+     * Bundling the renderer rules widens what builder.css contains, but not what
+     * it can reach: every selector must still sit under one of our two scopes.
+     */
+    const escapees = selectorsOf(css).filter(
+      (s) => !s.includes(BUILDER_SCOPE) && !s.includes(RENDERER_SCOPE),
+    )
+    expect(escapees).toEqual([])
   })
 })

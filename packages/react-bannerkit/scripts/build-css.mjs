@@ -97,14 +97,46 @@ export async function compileCss(name) {
   return result.css
 }
 
+/*
+ * The editor draws real banners - on its canvas and in preview - so it needs the
+ * renderer's rules as well as its own. They are appended to `builder.css` rather
+ * than left as a second import a consumer has to remember.
+ *
+ * This is not a convenience. Importing only `builder.css` used to produce an
+ * editor that looked entirely correct except that `.bnbr-panel` never got
+ * `position: absolute`: panels stacked down the page instead of laying out side
+ * by side, so splitting appeared to add blank space below the banner rather than
+ * to divide it. Nothing errored, and the chrome around it was perfect, which
+ * made it read as a bug in the split.
+ *
+ * The renderer block is appended verbatim, still scoped to `.bnbr` rather than
+ * to the editor's `.bnb-root`, so a banner is styled identically wherever it is
+ * rendered. A consumer who imports both stylesheets just gets these rules twice,
+ * byte for byte, which changes nothing.
+ */
+const SELF_SUFFICIENT_NOTE = `\n/* --- react-bannerkit: renderer rules, included so the editor is self-contained --- */\n`
+
+/**
+ * The stylesheet as it is actually shipped, which for the builder means its own
+ * rules plus the renderer's. Tests assert against this rather than `compileCss`
+ * so they see what a consumer sees.
+ * @param {'builder' | 'renderer'} name
+ */
+export async function composeCss(name) {
+  if (name !== 'builder') return compileCss(name)
+  const [builder, renderer] = await Promise.all([compileCss('builder'), compileCss('renderer')])
+  return builder + SELF_SUFFICIENT_NOTE + renderer
+}
+
 async function main() {
   for (const [name, entry] of Object.entries(ENTRIES)) {
-    const css = await compileCss(name)
+    const css = await composeCss(name)
     const out = join(packageRoot, entry.to)
     await mkdir(dirname(out), { recursive: true })
     await writeFile(out, css, 'utf8')
     const kb = (Buffer.byteLength(css, 'utf8') / 1024).toFixed(1)
-    console.log(`[build-css] ${entry.to}  ${kb} kB  scoped to ${entry.scope}`)
+    const note = name === 'builder' ? ` (+ ${RENDERER_SCOPE} rules)` : ''
+    console.log(`[build-css] ${entry.to}  ${kb} kB  scoped to ${entry.scope}${note}`)
   }
 }
 

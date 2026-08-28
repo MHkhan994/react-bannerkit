@@ -207,6 +207,22 @@ check('builder.css is resolvable and fully scoped', () => {
   return (css.length / 1024).toFixed(1) + ' kB'
 })
 
+check('builder.css alone is enough to lay a banner out', () => {
+  /*
+   * The editor draws real banners, so builder.css ships the renderer's rules
+   * too. An app that imported only builder.css got an editor that looked right
+   * in every respect except that panels were never positioned: they stacked
+   * down the page instead of dividing the banner, and splitting looked like it
+   * was adding blank space. Nothing errored, so nothing caught it.
+   */
+  const css = readFileSync(require.resolve('react-bannerkit/builder.css'), 'utf8')
+  if (!css.includes('.bnbr-panel')) throw new Error('no .bnbr-panel rules in builder.css')
+  if (!/\.bnbr-panel\s*\{[^}]*position:\s*absolute/.test(css)) {
+    throw new Error('builder.css does not position banner panels')
+  }
+  return 'panels positioned without a second import'
+})
+
 check('the editor server-renders without throwing', () => {
   // It is a client component, but Next still renders it during SSR of any page
   // that embeds it, so it must not depend on the DOM being there.
