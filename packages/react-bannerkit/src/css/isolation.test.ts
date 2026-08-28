@@ -170,6 +170,31 @@ describe('builder.css', () => {
     expect(declarations.filter((d) => !d.includes('!important'))).toEqual([])
   })
 
+  test('the canvas selection outline survives the firewall that blanks outlines', () => {
+    /*
+     * The firewall neutralises `outline` across the editor, and an important
+     * declaration beats a normal one in any layer. So while the selection rules
+     * were normal, selecting a panel drew nothing: the editor looked like it had
+     * ignored the click. Nothing failed loudly, which is exactly why this is
+     * asserted rather than left to be noticed.
+     */
+    for (const state of ['data-selected', 'data-hovered']) {
+      let outline: { important: boolean } | undefined
+      postcss.parse(css).walkRules((rule) => {
+        if (isInsideKeyframes(rule)) return
+        if (!rule.selector.includes('bnb-selectable') || !rule.selector.includes(state)) return
+        rule.walkDecls('outline', (declaration) => {
+          outline = { important: Boolean(declaration.important) }
+        })
+      })
+      expect(outline, `no .bnb-selectable[${state}] outline rule found`).toBeTruthy()
+      expect(
+        outline!.important,
+        `the ${state} outline must be important, or the firewall blanks it`,
+      ).toBe(true)
+    }
+  })
+
   test('registers only Tailwind-namespaced custom properties globally', () => {
     /*
      * `@property` cannot be scoped - it registers a custom property for the

@@ -46,6 +46,7 @@ export interface BannerRendererProps {
   onElementPointerDown?:
     | ((element: BannerElement, panelId: string, event: React.PointerEvent) => void)
     | undefined
+  onPanelPointerDown?: ((panelId: string, event: React.PointerEvent) => void) | undefined
   selectedElementId?: string | undefined
   /** Accessible name for the banner region. */
   label?: string
@@ -103,6 +104,7 @@ export function BannerRenderer({
   inert,
   label,
   onElementPointerDown,
+  onPanelPointerDown,
   selectedElementId,
 }: BannerRendererProps) {
   /*
@@ -125,6 +127,7 @@ export function BannerRenderer({
     headingTag,
     inert,
     onElementPointerDown,
+    onPanelPointerDown,
     selectedElementId,
     onActivate: onElementClick
       ? (element) => onElementClick(element, { breakpoint: device })

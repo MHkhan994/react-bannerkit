@@ -42,8 +42,40 @@
 .bnbr h1,
 .bnbr h2,
 .bnbr h3,
+.bnbr h4,
 .bnbr figure {
   margin: 0;
+}
+
+/*
+ * Decoration the host must not be able to impose on banner content.
+ *
+ * The editor's stylesheet has a firewall layer for this, but it deliberately
+ * exempts `.bnbr`: it works with `!important`, which would beat the inline style
+ * the document drives every banner with. So the renderer defends itself here
+ * instead, with normal declarations - enough to outrank a host's `button {}` or
+ * `a {}` rule, and still yielding to anything the template sets inline.
+ *
+ * Found in the wild rather than imagined: a host with
+ * `button { text-transform: uppercase }` shouted every banner's call to action.
+ * `font: inherit` above does not cover it, because `text-transform` is not part
+ * of the `font` shorthand.
+ */
+.bnbr-heading,
+.bnbr-text,
+.bnbr-button,
+.bnbr-link,
+.bnbr-icon,
+.bnbr-image {
+  text-transform: none;
+  text-shadow: none;
+  text-indent: 0;
+  letter-spacing: normal;
+  word-spacing: normal;
+  font-style: normal;
+  font-variant: normal;
+  box-shadow: none;
+  float: none;
 }
 
 .bnbr a {

@@ -113,6 +113,14 @@ export function PanelView({ panel, style, context, eager }: PanelViewProps) {
    * its destinations are per slide, and wrapping the whole thing would swallow
    * the arrows and the pagination dots.
    */
+  /*
+   * Unset on a public page, so a panel stays a plain box there. In the editor it
+   * is what makes the panel itself the thing you press to select it.
+   */
+  const onPointerDown = context.onPanelPointerDown
+    ? (event: React.PointerEvent) => context.onPanelPointerDown?.(panel.id, event)
+    : undefined
+
   if (panel.type === 'single' && panel.href) {
     return (
       <a
@@ -121,6 +129,7 @@ export function PanelView({ panel, style, context, eager }: PanelViewProps) {
         style={boxStyle}
         href={panel.href}
         onClick={context.inert ? (event) => event.preventDefault() : undefined}
+        onPointerDown={onPointerDown}
       >
         {body}
       </a>
@@ -128,7 +137,12 @@ export function PanelView({ panel, style, context, eager }: PanelViewProps) {
   }
 
   return (
-    <div className="bnbr-panel" data-bnb-panel={panel.id} style={boxStyle}>
+    <div
+      className="bnbr-panel"
+      data-bnb-panel={panel.id}
+      style={boxStyle}
+      onPointerDown={onPointerDown}
+    >
       {body}
     </div>
   )

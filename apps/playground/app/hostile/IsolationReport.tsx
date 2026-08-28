@@ -270,6 +270,25 @@ const CHECKS: Check[] = [
     expect: (v) => v !== 'normal',
     expected: 'the value renderer.css sets, not normal',
   },
+  {
+    /*
+     * The mirror of the two checks above, and a real leak rather than a
+     * hypothetical one: this host sets `button { text-transform: uppercase }`,
+     * and it shouted every banner's call to action on a consumer's site.
+     *
+     * The firewall cannot fix it, because it exempts `.bnbr` on purpose - it
+     * works with `!important`, which would beat the inline style the document
+     * drives banners with. renderer.css defends its own elements instead, with
+     * normal declarations that outrank a host element selector while still
+     * yielding to the template.
+     */
+    direction: 'editor',
+    what: 'a host element rule cannot restyle rendered banner text',
+    selector: '#banner-button',
+    property: 'text-transform',
+    expect: equals('none'),
+    expected: 'none, not the host’s uppercase',
+  },
 ]
 
 interface Result extends Check {

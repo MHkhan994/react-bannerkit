@@ -31,6 +31,16 @@ export interface ElementContext {
   onElementPointerDown?:
     | ((element: BannerElement, panelId: string, event: React.PointerEvent) => void)
     | undefined
+  /*
+   * Selecting a panel by pressing its body.
+   *
+   * This lives on the rendered panel rather than on the editor's chrome overlay
+   * for a reason that cost a release: the overlay covers the whole panel, so
+   * while it accepted pointer events it swallowed every press meant for the
+   * elements underneath. The overlay is now inert to the pointer and the two
+   * real targets - the panel and the element - carry their own handlers.
+   */
+  onPanelPointerDown?: ((panelId: string, event: React.PointerEvent) => void) | undefined
   selectedElementId?: string | undefined
   /*
    * The panel this element belongs to, injected by PanelView.

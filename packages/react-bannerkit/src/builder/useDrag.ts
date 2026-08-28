@@ -12,7 +12,7 @@
  * `setPointerCapture` is avoided in favour of window listeners because the
  * element being dragged is re-rendered mid-gesture.
  */
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 
 import type { LayoutDivider } from '../core/layout'
 import type { EditorAction } from './state/reducer'
@@ -120,11 +120,25 @@ export function useDividerDrag(
  * reason the rect is captured up front rather than looked up on demand.
  */
 export function useElementDrag(dispatch: Dispatch) {
-  const active = useRef(false)
-
   return useCallback(
     (event: React.PointerEvent, panelId: string, elementId: string) => {
       const node = event.currentTarget as HTMLElement | null
+
+      /*
+       * Select first, and unconditionally.
+       *
+       * Everything below depends on being able to measure the panel, and that
+       * can legitimately fail - a panel with no size yet, a tree a media query
+       * has hidden. While selection sat behind those guards, a press in that
+       * state did nothing whatsoever: no drag, and no selection either.
+       *
+       * Stopping propagation is part of the same decision. The rendered panel
+       * carries its own press handler, so without this the press would bubble
+       * and immediately replace the element selection with the panel's.
+       */
+      event.stopPropagation()
+      dispatch({ type: 'selectElement', panelId, elementId })
+
       /*
        * The rendered panel, not the editor's chrome overlay. The overlay is a
        * sibling of the banner rather than an ancestor of its elements, so looking
@@ -145,9 +159,6 @@ export function useElementDrag(dispatch: Dispatch) {
         y: ((elementBox.top - panelBox.top) / panelBox.height) * 100,
       }
       const start = { x: event.clientX, y: event.clientY }
-
-      active.current = true
-      dispatch({ type: 'selectElement', panelId, elementId })
 
       beginDrag(event, dispatch, (moveEvent) => {
         dispatch({

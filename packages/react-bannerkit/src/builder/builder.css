@@ -446,32 +446,44 @@
   }
 
   .bnb-root .bnb-divider[data-axis='x'] {
-    width: 6px;
+    width: var(--bnb-divider-grab, 6px);
     cursor: col-resize;
   }
 
   .bnb-root .bnb-divider[data-axis='x']::after {
-    width: 1px;
+    width: var(--bnb-divider-line, 1px);
   }
 
   .bnb-root .bnb-divider[data-axis='y'] {
-    height: 6px;
+    height: var(--bnb-divider-grab, 6px);
     cursor: row-resize;
   }
 
   .bnb-root .bnb-divider[data-axis='y']::after {
-    height: 1px;
+    height: var(--bnb-divider-line, 1px);
   }
 
-  /* Selection chrome on the canvas. No transition: it must feel instant. */
+  /*
+   * Selection chrome on the canvas. No transition: it must feel instant.
+   *
+   * `!important` is load-bearing, and not because of anything a host does. The
+   * firewall below neutralises `outline` across the whole editor, and an
+   * important declaration beats a normal one whatever layer it is in - so while
+   * these were normal, selecting a panel drew nothing at all. Marking them
+   * important puts them back in the layered comparison, which `components`
+   * wins: for important declarations the *earlier* layer takes precedence, and
+   * `components` is declared before `bnb-firewall`.
+   *
+   * Guarded by a test that parses the built CSS, because the failure is silent.
+   */
   .bnb-root .bnb-selectable[data-selected='true'] {
-    outline: 2px solid var(--bnb-ring);
-    outline-offset: 2px;
+    outline: 2px solid var(--bnb-ring) !important;
+    outline-offset: 2px !important;
   }
 
   .bnb-root .bnb-selectable[data-hovered='true'] {
-    outline: 1px dashed color-mix(in oklab, var(--bnb-ring) 60%, transparent);
-    outline-offset: 2px;
+    outline: 1px dashed color-mix(in oklab, var(--bnb-ring) 60%, transparent) !important;
+    outline-offset: 2px !important;
   }
 }
 

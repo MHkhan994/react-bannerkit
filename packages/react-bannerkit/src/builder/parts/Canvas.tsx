@@ -9,9 +9,9 @@
  * the editor honest: if the canvas and the live page ever disagree, it is a bug
  * in one component rather than a difference between two implementations.
  */
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
-import { computeLayout, insetStyle, resolveHeight } from '../../core/layout'
+import { computeLayout, insetStyle, resolveHeight, type LayoutDivider } from '../../core/layout'
 import { findNode } from '../../core/tree'
 import { DEVICES, type BannerPanel, type BreakpointName } from '../../core/types'
 import { BannerRenderer } from '../../renderer/BannerRenderer'
@@ -32,6 +32,29 @@ interface CanvasProps {
   available: number
 }
 
+/*
+ * A divider's geometry, including the two custom properties that size its grab
+ * area. `CSSProperties` has no room for custom properties, so the type is
+ * widened here rather than with a cast at the call site - React passes anything
+ * beginning with `--` straight through to the style attribute.
+ */
+type DividerStyle = React.CSSProperties & {
+  '--bnb-divider-grab': string
+  '--bnb-divider-line': string
+}
+
+function dividerStyle(divider: LayoutDivider, grab: number, scale: number): DividerStyle {
+  const offset = `calc(${divider.pos}% - ${grab / 2}px)`
+  return {
+    '--bnb-divider-grab': `${grab}px`,
+    // Keeps the drawn line one real pixel however far the frame is scaled down.
+    '--bnb-divider-line': `${1 / scale}px`,
+    ...(divider.axis === 'y'
+      ? { left: `${divider.rect.x}%`, width: `${divider.rect.w}%`, top: offset }
+      : { top: `${divider.rect.y}%`, height: `${divider.rect.h}%`, left: offset }),
+  }
+}
+
 /** Device width, the banner's resolved height, and the scale needed to fit. */
 function frameMetrics(state: EditorState, available: number) {
   const device = DEVICES[state.breakpoint]
@@ -50,6 +73,17 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
 
   const onDividerDown = useDividerDrag(frameRef, dispatch, scale)
   const onElementDown = useElementDrag(dispatch)
+
+  /*
+   * Which panel the pointer is over, so its split controls can be revealed.
+   *
+   * Read from the event's target rather than from a `:hover` on the chrome
+   * overlay: the overlay is `pointer-events: none` now, and such an element
+   * never matches `:hover`, so the old `group-hover` could not work. Hover is
+   * the one place a DOM lookup is safe - it is decoration, and the worst a miss
+   * can do is leave the toolbar hidden until the panel is selected.
+   */
+  const [hoveredPanelId, setHoveredPanelId] = useState<string | null>(null)
 
   const selectedPanelId = state.selection.kind !== 'template' ? state.selection.panelId : null
   const selectedElementId =
@@ -79,6 +113,12 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
             }}
+            onPointerMove={(event) => {
+              const node = event.target as HTMLElement | null
+              const panel = node?.closest?.('[data-bnb-panel]')
+              setHoveredPanelId(panel?.getAttribute('data-bnb-panel') ?? null)
+            }}
+            onPointerLeave={() => setHoveredPanelId(null)}
           >
             <BannerRenderer
               template={template(state)}
@@ -97,10 +137,23 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
               onElementPointerDown={(element, panelId, event) =>
                 onElementDown(event, panelId, element.id)
               }
+              onPanelPointerDown={(panelId, event) => {
+                // Stops the canvas ground below from clearing the selection.
+                event.stopPropagation()
+                dispatch({ type: 'selectPanel', panelId })
+              }}
             />
 
-            {/* Editing chrome, above the banner. */}
-            <div className="absolute inset-0">
+            {/*
+              Editing chrome, above the banner.
+
+              The container is inert to the pointer for the same reason its
+              children are: it spans the whole frame, so anything it caught was
+              a press meant for the banner. Only the things that are genuinely
+              interactive - the split tools, the slide dots, the dividers - opt
+              back in.
+            */}
+            <div className="pointer-events-none absolute inset-0">
               {leaves.map(({ panel, rect }, index) => (
                 <PanelChrome
                   key={panel.id}
@@ -110,6 +163,7 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
                   dispatch={dispatch}
                   style={insetStyle(rect, bp.gutter)}
                   selected={panel.id === selectedPanelId}
+                  hovered={panel.id === hoveredPanelId}
                   selectedElementId={selectedElementId}
                   onElementPointerDown={onElementDown}
                   scale={scale}
@@ -120,28 +174,24 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
                 const split = findNode(bp.root, divider.splitId)
                 const ratio = split?.kind === 'split' ? split.ratio : 0.5
                 const vertical = divider.axis === 'y'
+                /*
+                 * The grab area is counter-scaled, exactly as the split tools
+                 * are. A fixed 6px handle inside a frame drawn at a third of
+                 * device size is barely two pixels on screen - too fine to hit
+                 * on purpose, which reads as the divider not being draggable at
+                 * all. This keeps it ~10 real pixels at any zoom.
+                 */
+                const grab = 10 / scale
                 return (
                   <div
                     key={divider.splitId}
-                    className="bnb-divider"
+                    className="pointer-events-auto bnb-divider"
                     data-axis={divider.axis}
                     role="separator"
                     aria-orientation={vertical ? 'horizontal' : 'vertical'}
                     aria-label="Resize panels"
                     tabIndex={0}
-                    style={
-                      vertical
-                        ? {
-                            left: `${divider.rect.x}%`,
-                            width: `${divider.rect.w}%`,
-                            top: `calc(${divider.pos}% - 3px)`,
-                          }
-                        : {
-                            top: `${divider.rect.y}%`,
-                            height: `${divider.rect.h}%`,
-                            left: `calc(${divider.pos}% - 3px)`,
-                          }
-                    }
+                    style={dividerStyle(divider, grab, scale)}
                     onPointerDown={(event) => onDividerDown(event, divider, ratio)}
                     onKeyDown={(event) => {
                       // Keyboard resizing, since a drag is unavailable.
@@ -179,6 +229,7 @@ interface PanelChromeProps {
   dispatch: (action: EditorAction) => void
   style: React.CSSProperties
   selected: boolean
+  hovered: boolean
   selectedElementId: string | null
   onElementPointerDown: (event: React.PointerEvent, panelId: string, elementId: string) => void
   scale: number
@@ -191,6 +242,7 @@ function PanelChrome({
   dispatch,
   style,
   selected,
+  hovered,
   selectedElementId,
   onElementPointerDown,
   scale,
@@ -200,15 +252,24 @@ function PanelChrome({
   const canDelete = computeLayout(currentBreakpoint(state).root).leaves.length > 1
 
   return (
+    /*
+      Decoration only, and deliberately inert to the pointer.
+
+      This overlay covers the whole panel. While it accepted pointer events it
+      was the target of every press inside that panel, so the elements drawn
+      underneath never received one: clicking an element selected its panel, and
+      dragging an element could not start at all. Selecting a panel now happens
+      on the rendered panel itself; the controls below opt back in individually.
+
+      It keeps `tabIndex` and its key handler: focus and clicks are independent,
+      so the panel stays reachable and operable from the keyboard.
+    */
     <div
       data-panel-id={panel.id}
-      className={cn('bnb-selectable group absolute', selected && 'z-10')}
+      className={cn('bnb-selectable group pointer-events-none absolute', selected && 'z-10')}
       data-selected={selected}
+      data-hovered={hovered}
       style={style}
-      onPointerDown={(event) => {
-        event.stopPropagation()
-        dispatch({ type: 'selectPanel', panelId: panel.id })
-      }}
       role="button"
       tabIndex={0}
       aria-label={`Panel ${index + 1}`}
@@ -225,10 +286,11 @@ function PanelChrome({
         on a frame that has been shrunk to fit.
       */}
       <div
+        data-bnb-tools
         className={cn(
-          'absolute right-1 top-1 z-30 flex gap-1 opacity-0 transition-opacity',
-          'group-hover:opacity-100 focus-within:opacity-100',
-          selected && 'opacity-100',
+          'pointer-events-auto absolute right-1 top-1 z-30 flex gap-1 opacity-0 transition-opacity',
+          'focus-within:opacity-100',
+          (selected || hovered) && 'opacity-100',
         )}
         style={{ transform: `scale(${1 / scale})`, transformOrigin: 'top right' }}
       >
@@ -271,7 +333,7 @@ function PanelChrome({
       {/* Slide dots for a carousel, so the slide being edited can be changed. */}
       {panel.type === 'carousel' && panel.slides.length > 1 ? (
         <div
-          className="absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 gap-1"
+          className="pointer-events-auto absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 gap-1"
           style={{ transform: `translateX(-50%) scale(${1 / scale})` }}
         >
           {panel.slides.map((slide, slideIndex) => (
