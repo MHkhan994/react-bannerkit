@@ -1,6 +1,6 @@
 {
   "name": "react-bannerkit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A visual banner template builder and renderer for React. Split banners into panels, fill them with content, tune three independent breakpoints, and ship the result with a self-contained renderer.",
   "license": "MIT",
   "author": "MHkhan994",

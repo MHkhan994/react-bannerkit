@@ -177,13 +177,6 @@
   height: 100%;
 }
 
-/* A freely positioned element leaves the stack and sits at its own percentage. */
-.bnbr-free {
-  position: absolute;
-  margin: 0;
-  z-index: 3;
-}
-
 .bnbr-overlay {
   position: absolute;
   inset: 0;
@@ -237,6 +230,25 @@
   position: relative;
   z-index: 2;
   flex: 0 0 auto;
+}
+
+/*
+ * A freely positioned element leaves the stack and sits at its own percentage.
+ *
+ * This MUST stay below every element-type rule above. Each of those sets
+ * `position: relative`, and they all have the same specificity as this once the
+ * build scopes them - so whichever is written last wins. While this block sat
+ * above them, a freely placed element computed to `relative`: its `left`/`top`
+ * offset it from wherever the flex stack had already put it, instead of pinning
+ * it to a percentage of the panel, and it still took up its slot in the stack.
+ * The inspector's X and Y moved, and the element went somewhere else entirely.
+ *
+ * Ordering is load-bearing and invisible, so a test asserts it.
+ */
+.bnbr-free {
+  position: absolute;
+  margin: 0;
+  z-index: 3;
 }
 
 /* --------------------------------------------------------------- carousel */

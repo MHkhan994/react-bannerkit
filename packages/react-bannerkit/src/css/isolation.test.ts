@@ -237,6 +237,38 @@ describe('renderer.css', () => {
     expect(css.length).toBeLessThan(12_000)
   })
 
+  test('free placement outranks every element rule that sets position', () => {
+    /*
+     * `.bnbr-free` and `.bnbr-button` (and heading, link, image, icon) all end up
+     * at the same specificity once the build scopes them, so the one written
+     * last wins. `.bnbr-free` used to be written first, which meant a freely
+     * placed element computed to `position: relative` and was offset from its
+     * place in the flex stack rather than pinned to a percentage of the panel:
+     * the inspector's X and Y changed and the element landed somewhere else.
+     *
+     * Nothing about that fails loudly, so the order is asserted here.
+     */
+    let freeIndex = -1
+    const laterPositioned: string[] = []
+    postcss.parse(css).walkRules((rule) => {
+      if (isInsideKeyframes(rule)) return
+      const index = rule.source?.start?.offset ?? -1
+      if (rule.selector.includes('bnbr-free')) {
+        freeIndex = index
+        return
+      }
+      if (freeIndex === -1) return
+      // A rule after `.bnbr-free` that also sets `position` would override it.
+      rule.walkDecls('position', () => {
+        if (rule.selector.split(',').some((s) => /\.bnbr-(heading|text|button|link|image|icon)\b/.test(s))) {
+          laterPositioned.push(rule.selector.trim())
+        }
+      })
+    })
+    expect(freeIndex, 'no .bnbr-free rule in the built renderer CSS').toBeGreaterThan(-1)
+    expect(laterPositioned, 'these element rules would override .bnbr-free').toEqual([])
+  })
+
   test('contains no Tailwind utility classes, being hand-written', () => {
     // Tailwind's escaped-colon variants are the giveaway, e.g. `.md\:flex`.
     expect(css).not.toMatch(/\\:/)
