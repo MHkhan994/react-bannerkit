@@ -195,6 +195,36 @@ describe('builder.css', () => {
     }
   })
 
+  test('centres its dialogs without depending on auto margins', () => {
+    /*
+     * A modal dialog is centred by the UA stylesheet with auto margins, and
+     * practically every application resets those: Tailwind's Preflight and any
+     * hand-rolled `* { margin: 0 }` both match `dialog`, and author CSS beats the
+     * UA sheet. The dialog then sits in the top-left corner of the viewport,
+     * which is what a real integration reported.
+     *
+     * Specificity cannot win that argument either - a host reset is usually
+     * unlayered, and unlayered normal declarations beat every layered one - so
+     * the centring must not go through `margin` at all.
+     */
+    let rule: Rule | undefined
+    postcss.parse(css).walkRules((candidate) => {
+      if (rule) return
+      if (candidate.selector.includes('bnb-dialog') && !candidate.selector.includes('::backdrop')) {
+        rule = candidate
+      }
+    })
+    expect(rule, 'no .bnb-dialog rule found').toBeTruthy()
+
+    const declared = new Set<string>()
+    rule!.walkDecls((declaration) => {
+      declared.add(declaration.prop)
+    })
+    for (const property of ['position', 'top', 'left', 'translate']) {
+      expect(declared.has(property), `.bnb-dialog must set ${property} to centre itself`).toBe(true)
+    }
+  })
+
   test('registers only Tailwind-namespaced custom properties globally', () => {
     /*
      * `@property` cannot be scoped - it registers a custom property for the

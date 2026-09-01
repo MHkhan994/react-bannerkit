@@ -621,7 +621,26 @@
    * package ships no portals at all. Focus trapping, Escape, and the backdrop
    * all come from the browser.
    */
+  /*
+   * Centred explicitly rather than by the browser's own `margin: auto`.
+   *
+   * A modal `<dialog>` is centred by the UA stylesheet with auto margins, and
+   * almost every application resets those: Tailwind's Preflight, and any
+   * hand-rolled `* { margin: 0 }`, both match `dialog` and both are author CSS,
+   * so they beat the UA rule. The dialog then pins itself to the top-left corner
+   * of the viewport. Fighting for `margin` is not winnable either - a host reset
+   * is usually unlayered, and unlayered normal declarations beat every layered
+   * one whatever their specificity.
+   *
+   * `top`/`left`/`translate` sidestep the argument: no reset touches them. The
+   * containing block is the viewport, because a modal dialog is in the top
+   * layer, so this centres against the window rather than any ancestor.
+   */
   .bnb-root .bnb-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 64px);
     padding: 0;
