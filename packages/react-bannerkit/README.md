@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./react-bannerkit-logo.png" alt="react-bannerkit" width="360" />
+</p>
+
 # react-bannerkit
 
 A visual banner template builder and renderer for React.
@@ -5,6 +9,8 @@ A visual banner template builder and renderer for React.
 Split a banner into panels, fill each panel with content, tune three independent
 breakpoint layouts, and ship the result with a renderer that has no dependencies
 beyond React.
+
+See the [getting started guide](https://react-bannerkit-doc.vercel.app/docs/getting-started).
 
 ```bash
 npm install react-bannerkit

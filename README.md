@@ -1,3 +1,13 @@
+<p align="center">
+  <img src="./react-bannerkit-logo.png" alt="react-bannerkit" width="360" />
+</p>
+
+<p align="center">
+  <strong>react-bannerkit</strong> — a visual banner template builder and renderer for React.
+  <br />
+  Docs: <a href="https://react-bannerkit-doc.vercel.app/docs/getting-started">react-bannerkit-doc.vercel.app</a>
+</p>
+
 # Handoff: Banner Builder
 
 ## Overview
