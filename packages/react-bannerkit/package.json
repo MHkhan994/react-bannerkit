@@ -1,10 +1,10 @@
 {
   "name": "react-bannerkit",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A visual banner template builder and renderer for React. Split banners into panels, fill them with content, tune three independent breakpoints, and ship the result with a self-contained renderer.",
   "license": "MIT",
   "author": "MHkhan994",
-  "homepage": "https://github.com/MHkhan994/react-bannerkit#readme",
+  "homepage": "https://react-bannerkit-doc.vercel.app/docs/getting-started",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MHkhan994/react-bannerkit.git",
@@ -33,7 +33,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "react-bannerkit-logo.png"
   ],
   "exports": {
     ".": {
