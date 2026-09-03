@@ -38,14 +38,23 @@ describe('with the template selected', () => {
     expect(template(s).name).toBe('Spring sale')
   })
 
-  test('offers a pixel height in fixed mode and a share of the screen in viewport mode', () => {
-    const fixed = start()
-    expect(labels(fixed)).toContain('Height')
-    expect(labels(fixed)).not.toContain('Share of screen')
+  test('offers a pixel frame height in fit mode and a share of the screen once the frame is viewport-based', () => {
+    const ratio = start()
+    // Ratio mode has no independent frame - only the design's own shape.
+    expect(labels(ratio)).not.toContain('Frame height')
 
-    const viewport = change(fixed, 'Height mode', 'vh' as never)
-    expect(labels(viewport)).toContain('Share of screen')
-    expect(labels(viewport)).not.toContain('Height')
+    // Switching to `fit` alone keeps a plain pixel frame height - only a
+    // `vh`-unit frame swaps in the viewport-share field.
+    const fit = change(ratio, 'Size mode', 'fit' as never)
+    expect(labels(fit)).toContain('Frame height')
+    expect(field(fit, 'Frame height').kind).toBe('number')
+
+    const viewport = editorReducer(fit, {
+      type: 'updateBreakpoint',
+      patch: { frameHeightUnit: 'vh' },
+    })
+    expect(labels(viewport)).toContain('Frame height')
+    expect(field(viewport, 'Frame height').kind).toBe('range')
   })
 
   test('the gutter field is bounded to the range the renderer honours', () => {
@@ -59,6 +68,88 @@ describe('with the template selected', () => {
     const colour = field(start(), 'Colour behind panels')
     if (colour.kind !== 'color') throw new Error('expected a colour field')
     expect(colour.allowTransparent).toBe(true)
+  })
+})
+
+describe('sizing fields', () => {
+  test('offers the three sizing modes', () => {
+    const model = inspectorModel(start())
+    const mode = model.fields.find((f) => f.label === 'Size mode')
+    expect(mode?.kind).toBe('segmented')
+    expect(mode && 'options' in mode && mode.options.map((o) => o.value)).toEqual([
+      'ratio',
+      'fit',
+      'cover',
+    ])
+  })
+
+  test('shows only the design height in ratio mode', () => {
+    const model = inspectorModel(start())
+    const labelled = model.fields.map((f) => f.label)
+    expect(labelled).toContain('Design height')
+    expect(labelled).not.toContain('Frame height')
+  })
+
+  test('shows both heights in fit mode, because they are different things', () => {
+    const fit = change(start(), 'Size mode', 'fit' as never)
+    const labelled = labels(fit)
+    expect(labelled).toContain('Design height')
+    expect(labelled).toContain('Frame height')
+  })
+
+  test('the design width is optional and reports the device default until overridden', () => {
+    const model = inspectorModel(start())
+    const width = model.fields.find((f) => f.label === 'Design width')
+    expect(width?.hint).toBe('optional')
+    expect(width?.value).toBe(1280) // DEVICES.laptop.width
+  })
+
+  test('setting the design width stores a template-level override', () => {
+    const s = change(start(), 'Design width', 1000 as never)
+    expect(template(s).designWidths?.laptop).toBe(1000)
+    // The other breakpoints are untouched.
+    expect(template(s).designWidths?.mobile).toBeUndefined()
+  })
+
+  test('setting the design width back to the device default deletes the override', () => {
+    const overridden = change(start(), 'Design width', 1000 as never)
+    expect(template(overridden).designWidths?.laptop).toBe(1000)
+
+    const restored = change(overridden, 'Design width', 1280 as never)
+    // Not merely unset for laptop - the whole key is gone, which is what keeps
+    // `designWidthOf`'s device fallback live and `normalizeTemplate` idempotent.
+    expect(template(restored).designWidths).toBeUndefined()
+  })
+
+  test('the frame height unit is only offered once there is a frame independent of the design', () => {
+    expect(labels(start())).not.toContain('Frame height unit')
+    const fit = change(start(), 'Size mode', 'fit' as never)
+    expect(labels(fit)).toContain('Frame height unit')
+  })
+
+  test('switching px to vh clamps an out-of-range frame height down into the vh range', () => {
+    let s = change(start(), 'Size mode', 'fit' as never)
+    s = editorReducer(s, { type: 'updateBreakpoint', patch: { frameHeight: 420, frameHeightUnit: 'px' } })
+    expect(field(s, 'Frame height unit').kind).toBe('segmented')
+
+    const toVh = change(s, 'Frame height unit', 'vh' as never)
+    const bp = template(toVh).breakpoints.laptop
+    expect(bp.frameHeightUnit).toBe('vh')
+    // 420 has no meaning as a vh percentage - it is clamped to the vh max, not
+    // carried across unchanged.
+    expect(bp.frameHeight).toBe(100)
+  })
+
+  test('switching vh to px clamps an out-of-range frame height up into the px range', () => {
+    let s = change(start(), 'Size mode', 'fit' as never)
+    s = editorReducer(s, { type: 'updateBreakpoint', patch: { frameHeight: 70, frameHeightUnit: 'vh' } })
+
+    const toPx = change(s, 'Frame height unit', 'px' as never)
+    const bp = template(toPx).breakpoints.laptop
+    expect(bp.frameHeightUnit).toBe('px')
+    // 70 is below the MIN_BANNER_HEIGHT floor as a pixel value, so it is
+    // clamped up to it rather than producing a banner shorter than the floor.
+    expect(bp.frameHeight).toBe(120)
   })
 })
 

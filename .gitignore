@@ -9,3 +9,6 @@ coverage/
 .env
 .env.local
 .eslintcache
+
+# Subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/

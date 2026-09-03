@@ -225,7 +225,7 @@ export function LeftRail({ state, dispatch }: RailProps) {
       <section>
         <SectionLabel>This breakpoint</SectionLabel>
         <p className="mb-2 text-[11px] leading-[1.5] text-muted-foreground">
-          Each screen keeps its own layout, height, and spacing. Copying replaces everything on the
+          Each screen keeps its own layout, sizing, and spacing. Copying replaces everything on the
           target screen.
         </p>
         <div className="flex flex-col gap-1">

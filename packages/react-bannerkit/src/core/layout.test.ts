@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { createPanel } from './defaults'
 import { createSequentialIdFactory } from './ids'
-import { computeLayout, insetStyle, resolveHeight } from './layout'
+import { computeLayout, insetStyle, resolveFrameHeight } from './layout'
 import { listPanels, setSplitRatio, splitPanel } from './tree'
 import type { BannerBreakpoint, BannerNode } from './types'
 
@@ -104,38 +104,65 @@ describe('insetStyle', () => {
 
   test('a gutter insets every side by half, so neighbours end up a full gutter apart', () => {
     expect(insetStyle(rect, 16)).toEqual({
-      left: 'calc(25% + 8px)',
-      top: 'calc(0% + 8px)',
-      width: 'calc(50% - 16px)',
-      height: 'calc(100% - 16px)',
+      left: 'calc(25% + calc(var(--bnbr-u) * 8))',
+      top: 'calc(0% + calc(var(--bnbr-u) * 8))',
+      width: 'calc(50% - calc(var(--bnbr-u) * 16))',
+      height: 'calc(100% - calc(var(--bnbr-u) * 16))',
     })
   })
 })
 
-describe('resolveHeight', () => {
+describe('resolveFrameHeight', () => {
   const base: Omit<BannerBreakpoint, 'root'> = {
-    height: 420,
-    heightMode: 'fixed',
-    vh: 80,
+    sizeMode: 'ratio',
+    designHeight: 420,
+    frameHeight: 80,
+    frameHeightUnit: 'vh',
     gutter: 0,
     bg: '#fff',
   }
 
-  test('fixed mode uses the pixel height as given', () => {
-    expect(resolveHeight({ ...base, heightMode: 'fixed' }, 'laptop')).toBe(420)
+  test('ratio mode uses the design height, not the frame height', () => {
+    expect(resolveFrameHeight({ ...base, sizeMode: 'ratio' }, 'laptop')).toBe(420)
   })
 
-  test('viewport mode resolves against the nominal screen height of the device', () => {
+  test('fit/cover in px uses the frame height as given', () => {
+    expect(
+      resolveFrameHeight(
+        { ...base, sizeMode: 'fit', frameHeightUnit: 'px', frameHeight: 500 },
+        'laptop',
+      ),
+    ).toBe(500)
+  })
+
+  test('fit/cover in vh resolves against the nominal screen height of the device', () => {
     // Laptop screen height is 800px, so 80% is 640.
-    expect(resolveHeight({ ...base, heightMode: 'vh' }, 'laptop')).toBe(640)
+    expect(
+      resolveFrameHeight(
+        { ...base, sizeMode: 'fit', frameHeightUnit: 'vh', frameHeight: 80 },
+        'laptop',
+      ),
+    ).toBe(640)
   })
 
   test('the same viewport share resolves differently per device', () => {
-    const vh = { ...base, heightMode: 'vh' as const }
-    expect(resolveHeight(vh, 'mobile')).not.toBe(resolveHeight(vh, 'laptop'))
+    const vh = { ...base, sizeMode: 'cover' as const, frameHeightUnit: 'vh' as const, frameHeight: 80 }
+    expect(resolveFrameHeight(vh, 'mobile')).not.toBe(resolveFrameHeight(vh, 'laptop'))
   })
 
-  test('never returns a height below the 120px floor', () => {
-    expect(resolveHeight({ ...base, height: 10 }, 'laptop')).toBe(120)
+  test('never returns a height below the 120px floor in ratio mode', () => {
+    expect(resolveFrameHeight({ ...base, sizeMode: 'ratio', designHeight: 10 }, 'laptop')).toBe(120)
+  })
+
+  test('never returns a height below the 120px floor in fit/cover vh mode either', () => {
+    // `ratio` and `fit`/`cover` floor through two independent Math.max calls,
+    // so the ratio case passing does not prove this one does too. 1% of the
+    // laptop's 800px nominal screen height is 8px, well under the floor.
+    expect(
+      resolveFrameHeight(
+        { ...base, sizeMode: 'fit', frameHeightUnit: 'vh', frameHeight: 1 },
+        'laptop',
+      ),
+    ).toBe(120)
   })
 })

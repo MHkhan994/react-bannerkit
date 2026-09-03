@@ -1,0 +1,13 @@
+<!--
+  The playground's tab icon.
+
+  Exists only so every route's console is clean: without an icon asset Next
+  serves no /favicon.ico, the browser requests one anyway, and the resulting
+  404 shows up as a console error on every page - which would leave a
+  permanent asterisk on the acceptance evidence gathered from these routes.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#201f1d" />
+  <rect x="6" y="11" width="12" height="10" rx="2" fill="#e1ad66" />
+  <rect x="20" y="11" width="6" height="10" rx="2" fill="#6b6560" />
+</svg>

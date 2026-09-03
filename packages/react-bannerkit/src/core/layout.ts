@@ -7,6 +7,7 @@
  * lets the renderer work server-side with no layout effect.
  */
 import { DEVICES, type BannerBreakpoint, type BannerNode, type BannerPanel, type BreakpointName, type Rect } from './types'
+import { du } from './units'
 
 /** A banner shorter than this is not a banner. Matches the inspector's minimum. */
 export const MIN_BANNER_HEIGHT = 120
@@ -90,30 +91,36 @@ export function insetStyle(rect: Rect, gutter: number): InsetStyle {
       height: `${rect.h}%`,
     }
   }
+  // The gutter is design px, so it scales with everything else.
   const half = gutter / 2
   return {
-    left: `calc(${rect.x}% + ${half}px)`,
-    top: `calc(${rect.y}% + ${half}px)`,
-    width: `calc(${rect.w}% - ${gutter}px)`,
-    height: `calc(${rect.h}% - ${gutter}px)`,
+    left: `calc(${rect.x}% + ${du(half)})`,
+    top: `calc(${rect.y}% + ${du(half)})`,
+    width: `calc(${rect.w}% - ${du(gutter)})`,
+    height: `calc(${rect.h}% - ${du(gutter)})`,
   }
 }
 
-/*
- * The banner's height in px for a given device.
+/**
+ * The frame's height in px for a given device.
  *
- * Viewport mode resolves against a nominal screen height per device rather than
- * the real window, so the editor canvas can show a truthful preview of a
- * `50vh` banner while itself being only a few hundred pixels tall. The renderer
- * emits `Nvh` and lets the browser do this properly.
+ * In `ratio` mode the frame has no independent height - it is the design's own
+ * height, and the renderer derives the real one from the container. The editor
+ * canvas still needs a number to draw at, and the authored design height is the
+ * truthful one. In `fit` and `cover` the frame does have its own height, and a
+ * `vh` value is resolved against the device's nominal screen height so the
+ * canvas can show a truthful preview inside a few hundred pixels.
  */
-export function resolveHeight(
+export function resolveFrameHeight(
   breakpoint: Omit<BannerBreakpoint, 'root'>,
   device: BreakpointName,
 ): number {
+  if (breakpoint.sizeMode === 'ratio') {
+    return Math.max(MIN_BANNER_HEIGHT, Math.round(breakpoint.designHeight))
+  }
   const raw =
-    breakpoint.heightMode === 'vh'
-      ? Math.round((DEVICES[device].screenHeight * (breakpoint.vh || 100)) / 100)
-      : breakpoint.height
+    breakpoint.frameHeightUnit === 'vh'
+      ? (DEVICES[device].screenHeight * (breakpoint.frameHeight || 100)) / 100
+      : breakpoint.frameHeight
   return Math.max(MIN_BANNER_HEIGHT, Math.round(raw))
 }

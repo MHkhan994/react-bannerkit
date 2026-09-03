@@ -17,12 +17,14 @@ import {
   createPanel,
   PLACEHOLDER_IMAGE,
 } from './defaults'
+import { MIN_BANNER_HEIGHT } from './layout'
 import { makeId, type IdFactory } from './ids'
 import { clampRatio } from './tree'
 import {
   BREAKPOINT_ORDER,
   CURRENT_SCHEMA_VERSION,
   DEVICES,
+  clampDesignWidth,
   type AlignMain,
   type BackgroundMode,
   type BannerBreakpoint,
@@ -37,10 +39,11 @@ import {
   type CarouselPagination,
   type CarouselTransition,
   type FontWeight,
-  type HeightMode,
+  type FrameHeightUnit,
   type ImageFit,
   type OverlayMode,
   type PanelKind,
+  type SizeMode,
   type SplitDirection,
   type TextAlign,
 } from './types'
@@ -89,7 +92,8 @@ const VARIANTS: readonly ButtonVariant[] = ['primary', 'solid', 'ghost']
 const OVERLAY_MODES: readonly OverlayMode[] = ['solid', 'gradient']
 const TRANSITIONS: readonly CarouselTransition[] = ['fade', 'slide', 'none']
 const PAGINATIONS: readonly CarouselPagination[] = ['dots', 'bars', 'none']
-const HEIGHT_MODES: readonly HeightMode[] = ['fixed', 'vh']
+const SIZE_MODES: readonly SizeMode[] = ['ratio', 'fit', 'cover']
+const FRAME_UNITS: readonly FrameHeightUnit[] = ['px', 'vh']
 const PANEL_KINDS: readonly PanelKind[] = ['single', 'carousel']
 const DIRECTIONS: readonly SplitDirection[] = ['cols', 'rows']
 const ELEMENT_TYPES: readonly BannerElementType[] = [
@@ -312,15 +316,92 @@ function normalizeBreakpoint(
   warn: (m: string) => void,
 ): BannerBreakpoint {
   const raw = isRecord(input) ? input : {}
+  const device = DEVICES[name]
+
+  /*
+   * v1 wrote `height` + `heightMode` + `vh`, and the design handoff before it
+   * wrote `h` + `hMode`. Both are read here so a row saved by an older build
+   * keeps working - that is the whole contract of this module.
+   */
+  const legacyMode = raw.heightMode ?? raw.hMode
+  const wasViewportHeight = legacyMode === 'vh'
+  const legacyHeight = raw.height ?? raw.h
+  const legacyVh = num(raw.vh, 100, 10, 100)
+
+  const sizeMode = oneOf(raw.sizeMode, SIZE_MODES, wasViewportHeight ? 'fit' : 'ratio')
+
+  /*
+   * A viewport-height banner has no authored height in design px, so it is
+   * derived from the device's nominal screen height. That keeps the proportions
+   * the author was actually looking at while they placed things.
+   */
+  const migratedDesignHeight = wasViewportHeight
+    ? Math.round((device.screenHeight * legacyVh) / 100)
+    : legacyHeight
+
+  const frameHeightUnit = oneOf(raw.frameHeightUnit, FRAME_UNITS, wasViewportHeight ? 'vh' : 'px')
+
   return {
-    // `h` and `hMode` are the names the design handoff documented.
-    height: num(raw.height ?? raw.h, DEVICES[name].height, 40, 4_000),
-    heightMode: oneOf(raw.heightMode ?? raw.hMode, HEIGHT_MODES, 'fixed'),
-    vh: num(raw.vh, 100, 10, 100),
+    sizeMode,
+    designHeight: num(
+      raw.designHeight ?? migratedDesignHeight,
+      device.height,
+      MIN_BANNER_HEIGHT,
+      4_000,
+    ),
+    frameHeight:
+      frameHeightUnit === 'vh'
+        ? num(raw.frameHeight ?? legacyVh, 100, 10, 100)
+        : num(raw.frameHeight ?? legacyHeight, device.height, MIN_BANNER_HEIGHT, 4_000),
+    frameHeightUnit,
     gutter: num(raw.gutter, 0, 0, 48),
     bg: color(raw.bg, '#eae9e9'),
     root: normalizeNode(raw.root, id, warn),
   }
+}
+
+/*
+ * Only entries that read as a number survive, each clamped to a width a banner
+ * could plausibly be designed at. A junk entry is dropped rather than defaulted,
+ * so `designWidthOf` falls back to the device width.
+ *
+ * Numeric strings count, for the same reason `num()` accepts them everywhere
+ * else in this file: plenty of stores hand numbers back stringified, and this is
+ * the one field where a silent drop rescales the entire document - losing
+ * `laptop: 1440` re-resolves the design width to 1280 and shrinks every value in
+ * the breakpoint by 12.5%. That is also why the drop warns: a discard here is
+ * expensive, and the module's contract has always been that nothing is discarded
+ * quietly.
+ */
+function normalizeDesignWidths(
+  input: unknown,
+  warn: (m: string) => void,
+): Partial<Record<BreakpointName, number>> {
+  if (!isRecord(input)) {
+    if (input !== undefined && input !== null) {
+      warn('Dropped designWidths, which was not an object of breakpoint widths.')
+    }
+    return {}
+  }
+  const out: Partial<Record<BreakpointName, number>> = {}
+  for (const name of BREAKPOINT_ORDER) {
+    const value = input[name]
+    // Absent is not a discard: omitting a breakpoint is how a document says
+    // "use the device width", so it is the normal case rather than a repair.
+    if (value === undefined) continue
+    const width =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+          ? Number.parseFloat(value)
+          : Number.NaN
+    if (!Number.isFinite(width)) {
+      warn(`Dropped the design width for "${name}", which was not a number.`)
+      continue
+    }
+    out[name] = clampDesignWidth(width)
+  }
+  return out
 }
 
 /* ----------------------------------------------------------------- template */
@@ -367,12 +448,14 @@ export function normalizeTemplate(input: unknown, options: NormalizeOptions = {}
   }
 
   const created = input.createdAt ?? input.created
+  const designWidths = normalizeDesignWidths(input.designWidths, warn)
   return {
     version: CURRENT_SCHEMA_VERSION,
     id: str(input.id, id()),
     name: str(input.name, 'Untitled banner'),
     description: str(input.description ?? input.desc, ''),
     createdAt: str(created, options.createdAt ?? new Date().toISOString()),
+    ...(Object.keys(designWidths).length > 0 ? { designWidths } : {}),
     breakpoints,
   }
 }

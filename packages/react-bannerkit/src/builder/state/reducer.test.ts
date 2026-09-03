@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import { createDefaultTemplate } from '../../core/defaults'
 import { createSequentialIdFactory } from '../../core/ids'
+import { normalizeTemplate } from '../../core/normalize'
 import { countPanels, findPanel, listPanels } from '../../core/tree'
-import type { BannerPanel, BannerTemplate } from '../../core/types'
+import { DESIGN_WIDTH_RANGE, type BannerPanel, type BannerTemplate } from '../../core/types'
 import { canRedo, canUndo } from './history'
 import {
   activeHost,
@@ -327,9 +328,9 @@ describe('carousels', () => {
 
 describe('breakpoint settings', () => {
   test('updates height, gutter, and frame colour on the current breakpoint only', () => {
-    const s = run(start(), { type: 'updateBreakpoint', patch: { gutter: 24, height: 600 } })
+    const s = run(start(), { type: 'updateBreakpoint', patch: { gutter: 24, designHeight: 600 } })
     expect(template(s).breakpoints.laptop.gutter).toBe(24)
-    expect(template(s).breakpoints.laptop.height).toBe(600)
+    expect(template(s).breakpoints.laptop.designHeight).toBe(600)
     expect(template(s).breakpoints.mobile.gutter).toBe(0)
   })
 
@@ -352,6 +353,99 @@ describe('breakpoint settings', () => {
     const copy = listPanels(template(s).breakpoints.mobile.root).map((p) => p.id)
     expect(copy.filter((id) => source.includes(id))).toEqual([])
   })
+})
+
+describe('the design width override', () => {
+  test('a width that differs from the device default is stored per breakpoint', () => {
+    const s0 = start()
+    const s = editorReducer(s0, { type: 'setDesignWidth', breakpoint: 'laptop', width: 1000 })
+    expect(template(s).designWidths).toEqual({ laptop: 1000 })
+    // Untouched breakpoints do not gain an entry - same object, not just an
+    // equal one.
+    expect(template(s).breakpoints.mobile).toBe(template(s0).breakpoints.mobile)
+  })
+
+  test('a width equal to the device default is not stored at all', () => {
+    const s = editorReducer(start(), { type: 'setDesignWidth', breakpoint: 'laptop', width: 1280 })
+    expect(template(s).designWidths).toBeUndefined()
+  })
+
+  test('a null width clears an existing override', () => {
+    const withOverride = editorReducer(start(), {
+      type: 'setDesignWidth',
+      breakpoint: 'laptop',
+      width: 1000,
+    })
+    const cleared = editorReducer(withOverride, {
+      type: 'setDesignWidth',
+      breakpoint: 'laptop',
+      width: null,
+    })
+    expect(template(cleared).designWidths).toBeUndefined()
+  })
+
+  test('clearing one breakpoint leaves another override in place', () => {
+    const both = run(
+      start(),
+      { type: 'setDesignWidth', breakpoint: 'laptop', width: 1000 },
+      { type: 'setDesignWidth', breakpoint: 'mobile', width: 320 },
+    )
+    const laptopCleared = editorReducer(both, {
+      type: 'setDesignWidth',
+      breakpoint: 'laptop',
+      width: null,
+    })
+    expect(template(laptopCleared).designWidths).toEqual({ mobile: 320 })
+  })
+
+  test('is undoable, like every other document edit', () => {
+    const s0 = start()
+    const s1 = editorReducer(s0, { type: 'setDesignWidth', breakpoint: 'laptop', width: 1000 })
+    expect(canUndo(s1.history)).toBe(true)
+    const undone = editorReducer(s1, { type: 'undo' })
+    expect(template(undone).designWidths?.laptop).toBeUndefined()
+  })
+
+  /*
+   * The reducer clamps because nothing before it does. `min` and `max` on the
+   * inspector's number field are HTML validation attributes: they mark the
+   * field invalid and let the keystroke through. So the editor stored whatever
+   * was typed, while the renderer it embeds normalises on every render - and
+   * the canvas measures the un-normalised document, so at `5` it drew a 5px
+   * frame around a banner rendering itself at 320.
+   */
+  test('clamps a width below the range instead of storing what was typed', () => {
+    const s = editorReducer(start(), { type: 'setDesignWidth', breakpoint: 'laptop', width: 5 })
+    expect(template(s).designWidths).toEqual({ laptop: DESIGN_WIDTH_RANGE.min })
+  })
+
+  test('clamps a width above the range', () => {
+    const s = editorReducer(start(), { type: 'setDesignWidth', breakpoint: 'laptop', width: 99_999 })
+    expect(template(s).designWidths).toEqual({ laptop: DESIGN_WIDTH_RANGE.max })
+  })
+
+  test('rounds a fractional width, since a design width is whole pixels', () => {
+    const s = editorReducer(start(), { type: 'setDesignWidth', breakpoint: 'laptop', width: 1000.4 })
+    expect(template(s).designWidths).toEqual({ laptop: 1000 })
+  })
+
+  test('leaves the document alone when handed a width that is not a number', () => {
+    const s0 = start()
+    const s = editorReducer(s0, { type: 'setDesignWidth', breakpoint: 'laptop', width: Number.NaN })
+    expect(template(s)).toBe(template(s0))
+  })
+
+  test.each([5, 99_999, 1000.4])(
+    'stores for %s exactly what normalizeTemplate would, so canvas and renderer agree',
+    (width) => {
+      // The divergence this closes: the canvas reads the raw document and the
+      // embedded renderer reads a normalised copy, so any width the two clamp
+      // differently is a frame drawn at one size around a banner drawn at
+      // another.
+      const stored = template(editorReducer(start(), { type: 'setDesignWidth', breakpoint: 'laptop', width }))
+      expect(normalizeTemplate(stored).designWidths).toEqual(stored.designWidths)
+    },
+  )
 })
 
 describe('undo and redo', () => {

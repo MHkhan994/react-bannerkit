@@ -8,6 +8,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 
 import type { BannerPanel, BannerSlide } from '../core/types'
+import { du } from '../core/units'
 import { Carousel } from './Carousel'
 import { ElementView, type ElementContext } from './ElementView'
 
@@ -28,8 +29,8 @@ export function Stack({
   context: ElementContext
 }) {
   const style: CSSProperties = {
-    padding: `${panel.pad}px`,
-    gap: `${panel.gap}px`,
+    padding: du(panel.pad),
+    gap: du(panel.gap),
     alignItems: panel.alignX,
     justifyContent: panel.alignY,
   }
@@ -94,8 +95,8 @@ export function PanelView({ panel, style, context, eager }: PanelViewProps) {
   const boxStyle: CSSProperties = {
     ...style,
     ...(panel.bgMode === 'color' ? { backgroundColor: panel.bg } : {}),
-    borderRadius: panel.radius ? `${panel.radius}px` : undefined,
-    ...(panel.borderW ? { border: `${panel.borderW}px solid ${panel.borderColor}` } : {}),
+    borderRadius: panel.radius ? du(panel.radius) : undefined,
+    ...(panel.borderW ? { border: `${du(panel.borderW)} solid ${panel.borderColor}` } : {}),
   }
 
   const body: ReactNode =

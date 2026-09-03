@@ -26,16 +26,18 @@ import {
   updatePanel as updatePanelInTree,
   type PanelPatch,
 } from '../../core/tree'
-import type {
-  BannerBreakpoint,
-  BannerElement,
-  BannerElementType,
-  BannerPanel,
-  BannerPosition,
-  BannerSlide,
-  BannerTemplate,
-  BreakpointName,
-  SplitDirection,
+import {
+  DEVICES,
+  clampDesignWidth,
+  type BannerBreakpoint,
+  type BannerElement,
+  type BannerElementType,
+  type BannerPanel,
+  type BannerPosition,
+  type BannerSlide,
+  type BannerTemplate,
+  type BreakpointName,
+  type SplitDirection,
 } from '../../core/types'
 import {
   commitGesture,
@@ -82,6 +84,12 @@ export type EditorAction =
   | { type: 'setSplitRatio'; splitId: string; ratio: number; transient?: boolean }
   | { type: 'updatePanel'; patch: PanelPatch; panelId?: string }
   | { type: 'updateBreakpoint'; patch: Partial<Omit<BannerBreakpoint, 'root'>> }
+  /*
+   * A template-level field, unlike everything above it. `null`, or a width
+   * equal to the device default, deletes the override rather than storing it -
+   * see the reducer case for why that is what keeps the document meaningful.
+   */
+  | { type: 'setDesignWidth'; breakpoint: BreakpointName; width: number | null }
   | { type: 'addElement'; elementType: BannerElementType }
   | { type: 'updateElement'; patch: Record<string, unknown>; elementId?: string }
   | { type: 'removeElement'; panelId: string; elementId: string }
@@ -356,6 +364,41 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             ...template(state).breakpoints,
             [state.breakpoint]: { ...current, ...action.patch },
           },
+        },
+        action,
+      )
+    }
+
+    case 'setDesignWidth': {
+      /*
+       * Clamped here, because nothing upstream does it. The inspector's `min`
+       * and `max` are HTML validation attributes: they colour the field red and
+       * let the keystroke through, so `5` arrived and was stored verbatim. The
+       * renderer was never at risk - `normalizeTemplate` clamps on every render
+       * - but the canvas measures the *un-normalized* document, so it drew a
+       * 5px frame around a banner rendering itself at 320 and the editor
+       * disagreed with its own preview.
+       */
+      if (action.width !== null && !Number.isFinite(action.width)) return state
+      const width = action.width === null ? null : clampDesignWidth(action.width)
+
+      // `designWidths` is destructured out of the spread below rather than
+      // just conditionally added back, so that clearing the last override
+      // actually removes the property - `...doc` alone would carry the old
+      // key straight through even when the new value for it is "nothing".
+      const { designWidths: _current, ...doc } = template(state)
+      const { [action.breakpoint]: _dropped, ...rest } = _current ?? {}
+      // Storing the device default would be a no-op that still shadows it
+      // forever, so a width that lands back on the default deletes the key
+      // instead - that is what lets `designWidthOf`'s fallback keep working and
+      // what keeps a round trip through `normalizeTemplate` idempotent.
+      const isDefault = width === null || width === DEVICES[action.breakpoint].width
+      const designWidths = isDefault ? rest : { ...rest, [action.breakpoint]: width }
+      return withTemplate(
+        state,
+        {
+          ...doc,
+          ...(Object.keys(designWidths).length > 0 ? { designWidths } : {}),
         },
         action,
       )

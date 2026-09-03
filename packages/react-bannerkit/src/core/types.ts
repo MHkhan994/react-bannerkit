@@ -13,7 +13,7 @@
  */
 
 /** Bumped whenever a stored document needs migrating. See `normalizeTemplate`. */
-export const CURRENT_SCHEMA_VERSION = 1
+export const CURRENT_SCHEMA_VERSION = 2
 
 export type BreakpointName = 'laptop' | 'tablet' | 'mobile'
 export type SplitDirection = 'cols' | 'rows'
@@ -36,7 +36,8 @@ export type ImageFit = 'cover' | 'contain'
 export type CarouselTransition = 'fade' | 'slide' | 'none'
 export type CarouselPagination = 'dots' | 'bars' | 'none'
 export type BackgroundMode = 'photo' | 'color'
-export type HeightMode = 'fixed' | 'vh'
+export type SizeMode = 'ratio' | 'fit' | 'cover'
+export type FrameHeightUnit = 'px' | 'vh'
 export type PanelKind = 'single' | 'carousel'
 
 /** Free placement, as a percentage of the containing panel box. 0–96. */
@@ -215,14 +216,28 @@ export interface BannerSplit {
 export type BannerNode = BannerSplit | BannerPanel
 
 export interface BannerBreakpoint {
-  /** Banner height in px. Used when `heightMode === 'fixed'`. */
-  height: number
-  heightMode: HeightMode
-  /** Percentage of viewport height, 10–100. Used when `heightMode === 'vh'`. */
-  vh: number
-  /** Space between panels, 0–48px. */
+  /**
+   * How the design is fitted into the space the host gives it.
+   *
+   * `ratio`  - height follows width; the design scales in both axes.
+   * `fit`    - the frame is `100% x frameHeight`; the design sits inside it,
+   *            letterboxed, with `bg` showing in the margin.
+   * `cover`  - the frame is `100% x frameHeight`; the design fills it and the
+   *            overflowing edges are cropped.
+   */
+  sizeMode: SizeMode
+  /**
+   * The design's own height, in design px. With the design width this fixes the
+   * aspect ratio. Stored rather than a derived ratio float so a value the author
+   * typed round-trips exactly instead of coming back as 619.9998.
+   */
+  designHeight: number
+  /** The frame's height. Read only by `fit` and `cover`. */
+  frameHeight: number
+  frameHeightUnit: FrameHeightUnit
+  /** Space between panels, in design px, so it scales with everything else. */
   gutter: number
-  /** Shows through the gutter. `'transparent'` is allowed. */
+  /** Shows through the gutter, and in the margin under `fit`. `'transparent'` is allowed. */
   bg: string
   root: BannerNode
 }
@@ -234,6 +249,14 @@ export interface BannerTemplate {
   description: string
   /** ISO 8601. A pre-formatted display date would be locale-bound and unsortable. */
   createdAt: string
+  /**
+   * Overrides the built-in design widths per breakpoint.
+   *
+   * The design width is what every px in the document is relative to, so
+   * changing it rescales the whole design. Omitted entries fall back to
+   * `DEVICES[name].width`.
+   */
+  designWidths?: Partial<Record<BreakpointName, number>>
   breakpoints: Record<BreakpointName, BannerBreakpoint>
 }
 
@@ -243,7 +266,7 @@ export interface DeviceSpec {
   width: number
   /** Default banner height for a new template. */
   height: number
-  /** Nominal screen height, so `heightMode: 'vh'` can be previewed. */
+  /** Nominal screen height, used to seed `designHeight` when migrating a v1 viewport-height breakpoint. */
   screenHeight: number
 }
 
@@ -251,6 +274,29 @@ export const DEVICES: Record<BreakpointName, DeviceSpec> = {
   laptop: { label: 'Laptop', width: 1280, height: 420, screenHeight: 800 },
   tablet: { label: 'Tab', width: 834, height: 380, screenHeight: 1112 },
   mobile: { label: 'Mobile', width: 390, height: 440, screenHeight: 844 },
+}
+
+/**
+ * Widths a banner could plausibly be designed at.
+ *
+ * Shared rather than repeated, because the three places that need it must not
+ * be able to disagree: `normalizeDesignWidths` clamps a stored document to it,
+ * the inspector field advertises it, and the reducer enforces it. While the
+ * reducer enforced nothing, typing `5` into Design width put `5` into editor
+ * state and the canvas drew a 5px frame around a renderer that had already
+ * clamped itself to 320 - and since `--bnbr-u` is `100cqw / designWidth`, an
+ * error in the small direction multiplies rather than adds.
+ */
+export const DESIGN_WIDTH_RANGE = { min: 320, max: 3840 } as const
+
+/** Clamps an authored design width into `DESIGN_WIDTH_RANGE`, at whole pixels. */
+export function clampDesignWidth(width: number): number {
+  return Math.round(Math.min(DESIGN_WIDTH_RANGE.max, Math.max(DESIGN_WIDTH_RANGE.min, width)))
+}
+
+/** The width a breakpoint's design is authored at, honouring a template override. */
+export function designWidthOf(template: BannerTemplate, name: BreakpointName): number {
+  return template.designWidths?.[name] ?? DEVICES[name].width
 }
 
 export const BREAKPOINT_ORDER: readonly BreakpointName[] = ['laptop', 'tablet', 'mobile']

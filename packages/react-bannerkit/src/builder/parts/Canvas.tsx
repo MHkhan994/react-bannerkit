@@ -9,11 +9,12 @@
  * the editor honest: if the canvas and the live page ever disagree, it is a bug
  * in one component rather than a difference between two implementations.
  */
-import { useRef, useState } from 'react'
+import { useState, type Ref } from 'react'
+import { createPortal } from 'react-dom'
 
-import { computeLayout, insetStyle, resolveHeight, type LayoutDivider } from '../../core/layout'
+import { computeLayout, insetStyle, resolveFrameHeight, type LayoutDivider } from '../../core/layout'
 import { findNode } from '../../core/tree'
-import { DEVICES, type BannerPanel, type BreakpointName } from '../../core/types'
+import { DEVICES, designWidthOf, type BannerPanel, type BreakpointName } from '../../core/types'
 import { BannerRenderer } from '../../renderer/BannerRenderer'
 import {
   currentBreakpoint,
@@ -30,6 +31,17 @@ interface CanvasProps {
   dispatch: (action: EditorAction) => void
   /** Available width in px, used to fit the frame. */
   available: number
+  /*
+   * The scroll container, handed back so it can be measured.
+   *
+   * It has to be this element and not the wrapper around it: only this one
+   * scrolls, so only this one's content box loses width when a vertical
+   * scrollbar appears in it. Measuring the wrapper kept reporting the
+   * pre-scrollbar width, and the frame was then drawn ~15px wider than the box
+   * it had to fit in - a horizontal scrollbar under every banner tall enough to
+   * scroll.
+   */
+  scrollRef?: Ref<HTMLDivElement> | undefined
 }
 
 /*
@@ -55,23 +67,48 @@ function dividerStyle(divider: LayoutDivider, grab: number, scale: number): Divi
   }
 }
 
-/** Device width, the banner's resolved height, and the scale needed to fit. */
+/** Design width, the banner's resolved frame height, and the scale needed to fit. */
 function frameMetrics(state: EditorState, available: number) {
   const device = DEVICES[state.breakpoint]
   const bp = currentBreakpoint(state)
-  const height = resolveHeight(bp, state.breakpoint)
+  const width = designWidthOf(template(state), state.breakpoint)
+  const height = resolveFrameHeight(bp, state.breakpoint)
   // Never scale up: a 390px mobile frame is shown at its real size.
-  const scale = Math.min(1, available > 0 ? available / device.width : 1)
-  return { device, height, scale }
+  const scale = Math.min(1, available > 0 ? available / width : 1)
+  return { device, width, height, scale }
 }
 
-export function Canvas({ state, dispatch, available }: CanvasProps) {
-  const frameRef = useRef<HTMLDivElement>(null)
-  const { device, height, scale } = frameMetrics(state, available)
+export function Canvas({ state, dispatch, available, scrollRef }: CanvasProps) {
+  /*
+   * The rendered `.bnbr-frame`, held in state rather than a ref so that the
+   * chrome can be rendered into it as soon as it exists.
+   *
+   * All the editing geometry below - the selection outlines, the split tools,
+   * the divider handles and the ratio a divider drag computes - is expressed as
+   * percentages of the frame the panels divide. The box the canvas sizes below
+   * is `designWidth x resolveFrameHeight(...)`, which is that frame only in
+   * `ratio` mode: under `fit` and `cover` renderer.css takes `.bnbr-frame` out
+   * of flow and centres it inside that box at the scaled design size, so the
+   * design is letterboxed within it or cropped beyond it. Chrome drawn against
+   * the outer box was then annotating a rectangle nothing was rendered into -
+   * measured at 79px above the panels and 159px too tall on a 1280x420 design
+   * fitted into an 800px frame - and a divider drag derived its ratio from the
+   * same wrong rectangle.
+   *
+   * So the chrome is not positioned by re-deriving what the CSS decided; it is
+   * portaled into the element the CSS decided about. That also fixes a quieter
+   * bug: `insetStyle` emits the gutter as `calc(var(--bnbr-u) * n)`, and
+   * `--bnbr-u` is declared on `.bnbr-frame`. Outside it the variable does not
+   * resolve, which made every `left`/`top`/`width`/`height` on the panel chrome
+   * invalid at computed-value time - so with any non-zero gutter the outlines
+   * were not merely offset, they were unpositioned.
+   */
+  const [frame, setFrame] = useState<HTMLDivElement | null>(null)
+  const { device, width, height, scale } = frameMetrics(state, available)
   const bp = currentBreakpoint(state)
   const { leaves, dividers } = computeLayout(bp.root)
 
-  const onDividerDown = useDividerDrag(frameRef, dispatch, scale)
+  const onDividerDown = useDividerDrag(frame, dispatch, scale)
   const onElementDown = useElementDrag(dispatch)
 
   /*
@@ -89,12 +126,21 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
   const selectedElementId =
     state.selection.kind === 'element' ? state.selection.elementId : null
 
-  const label = `${device.label} · ${device.width}px × ${height}px${
-    bp.heightMode === 'vh' ? ` · ${bp.vh}% of screen` : ''
-  }`
+  /*
+   * The design's own shape, not the resolved frame - in `fit`/`cover` those
+   * differ, and the frame box below (sized `width x height`, i.e.
+   * `designWidth x resolveFrameHeight(...)`) is what shows the letterboxing or
+   * cropping that difference produces. Labelling it with the resolved height
+   * too would just repeat what the box already shows.
+   */
+  const label = `${device.label} · ${width}px × ${bp.designHeight}px`
 
   return (
-    <div className="bnb-canvas" onPointerDown={() => dispatch({ type: 'selectTemplate' })}>
+    <div
+      ref={scrollRef}
+      className="bnb-canvas"
+      onPointerDown={() => dispatch({ type: 'selectTemplate' })}
+    >
       <div className="bnb-canvas-inner">
         <p className="mb-2 text-[11.5px] text-muted-foreground">{label}</p>
 
@@ -103,12 +149,11 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
           so the surrounding layout reserves the right amount of space. Without
           it the wrapper keeps the unscaled size and leaves a large gap.
         */}
-        <div style={{ width: device.width * scale, height: height * scale }}>
+        <div style={{ width: width * scale, height: height * scale }}>
           <div
-            ref={frameRef}
             className="relative"
             style={{
-              width: device.width,
+              width,
               height,
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
@@ -123,6 +168,8 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
             <BannerRenderer
               template={template(state)}
               breakpoint={state.breakpoint}
+              // The one box every overlay below is a percentage of.
+              frameRef={setFrame}
               // Links must not navigate away from the editor.
               inert
               label={`${template(state).name} preview`}
@@ -145,7 +192,14 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
             />
 
             {/*
-              Editing chrome, above the banner.
+              Editing chrome, above the banner and inside the frame it annotates.
+
+              Rendered into `.bnbr-frame` through a portal - see the note on
+              `frame` above for why the frame rather than the box around it. The
+              portal keeps this markup where it reads best, next to the state it
+              is derived from, while the DOM puts it where the geometry is right;
+              React events still bubble along the component tree, so the hover
+              handler on the box above continues to see presses from in here.
 
               The container is inert to the pointer for the same reason its
               children are: it spans the whole frame, so anything it caught was
@@ -153,63 +207,69 @@ export function Canvas({ state, dispatch, available }: CanvasProps) {
               interactive - the split tools, the slide dots, the dividers - opt
               back in.
             */}
-            <div className="pointer-events-none absolute inset-0">
-              {leaves.map(({ panel, rect }, index) => (
-                <PanelChrome
-                  key={panel.id}
-                  panel={panel}
-                  index={index}
-                  state={state}
-                  dispatch={dispatch}
-                  style={insetStyle(rect, bp.gutter)}
-                  selected={panel.id === selectedPanelId}
-                  hovered={panel.id === hoveredPanelId}
-                  selectedElementId={selectedElementId}
-                  onElementPointerDown={onElementDown}
-                  scale={scale}
-                />
-              ))}
+            {frame === null
+              ? null
+              : createPortal(
+                  <div className="bnb-chrome pointer-events-none">
+                    {leaves.map(({ panel, rect }, index) => (
+                      <PanelChrome
+                        key={panel.id}
+                        panel={panel}
+                        index={index}
+                        state={state}
+                        dispatch={dispatch}
+                        style={insetStyle(rect, bp.gutter)}
+                        selected={panel.id === selectedPanelId}
+                        hovered={panel.id === hoveredPanelId}
+                        selectedElementId={selectedElementId}
+                        onElementPointerDown={onElementDown}
+                        scale={scale}
+                      />
+                    ))}
 
-              {dividers.map((divider) => {
-                const split = findNode(bp.root, divider.splitId)
-                const ratio = split?.kind === 'split' ? split.ratio : 0.5
-                const vertical = divider.axis === 'y'
-                /*
-                 * The grab area is counter-scaled, exactly as the split tools
-                 * are. A fixed 6px handle inside a frame drawn at a third of
-                 * device size is barely two pixels on screen - too fine to hit
-                 * on purpose, which reads as the divider not being draggable at
-                 * all. This keeps it ~10 real pixels at any zoom.
-                 */
-                const grab = 10 / scale
-                return (
-                  <div
-                    key={divider.splitId}
-                    className="pointer-events-auto bnb-divider"
-                    data-axis={divider.axis}
-                    role="separator"
-                    aria-orientation={vertical ? 'horizontal' : 'vertical'}
-                    aria-label="Resize panels"
-                    tabIndex={0}
-                    style={dividerStyle(divider, grab, scale)}
-                    onPointerDown={(event) => onDividerDown(event, divider, ratio)}
-                    onKeyDown={(event) => {
-                      // Keyboard resizing, since a drag is unavailable.
-                      const step = event.shiftKey ? 0.05 : 0.01
-                      const back = vertical ? 'ArrowUp' : 'ArrowLeft'
-                      const forward = vertical ? 'ArrowDown' : 'ArrowRight'
-                      if (event.key !== back && event.key !== forward) return
-                      event.preventDefault()
-                      dispatch({
-                        type: 'setSplitRatio',
-                        splitId: divider.splitId,
-                        ratio: ratio + (event.key === forward ? step : -step),
-                      })
-                    }}
-                  />
-                )
-              })}
-            </div>
+                    {dividers.map((divider) => {
+                      const split = findNode(bp.root, divider.splitId)
+                      const ratio = split?.kind === 'split' ? split.ratio : 0.5
+                      const vertical = divider.axis === 'y'
+                      /*
+                       * The grab area is counter-scaled, exactly as the split
+                       * tools are. A fixed 6px handle inside a frame drawn at a
+                       * third of device size is barely two pixels on screen -
+                       * too fine to hit on purpose, which reads as the divider
+                       * not being draggable at all. This keeps it ~10 real
+                       * pixels at any zoom.
+                       */
+                      const grab = 10 / scale
+                      return (
+                        <div
+                          key={divider.splitId}
+                          className="pointer-events-auto bnb-divider"
+                          data-axis={divider.axis}
+                          role="separator"
+                          aria-orientation={vertical ? 'horizontal' : 'vertical'}
+                          aria-label="Resize panels"
+                          tabIndex={0}
+                          style={dividerStyle(divider, grab, scale)}
+                          onPointerDown={(event) => onDividerDown(event, divider, ratio)}
+                          onKeyDown={(event) => {
+                            // Keyboard resizing, since a drag is unavailable.
+                            const step = event.shiftKey ? 0.05 : 0.01
+                            const back = vertical ? 'ArrowUp' : 'ArrowLeft'
+                            const forward = vertical ? 'ArrowDown' : 'ArrowRight'
+                            if (event.key !== back && event.key !== forward) return
+                            event.preventDefault()
+                            dispatch({
+                              type: 'setSplitRatio',
+                              splitId: divider.splitId,
+                              ratio: ratio + (event.key === forward ? step : -step),
+                            })
+                          }}
+                        />
+                      )
+                    })}
+                  </div>,
+                  frame,
+                )}
           </div>
         </div>
 
@@ -330,11 +390,25 @@ function PanelChrome({
         ) : null}
       </div>
 
-      {/* Slide dots for a carousel, so the slide being edited can be changed. */}
+      {/*
+        Slide dots for a carousel, so the slide being edited can be changed.
+
+        Anchored to the top even though the bottom would read more naturally:
+        `.bnbr-dots` - the carousel's real pagination, which the visitor clicks -
+        sits at the bottom centre of this same panel, and the two used to overlap
+        into one smeared cluster of dots at two different sizes. The content owns
+        the bottom of the panel; editor furniture lives in the top band with the
+        split tools.
+      */}
       {panel.type === 'carousel' && panel.slides.length > 1 ? (
         <div
-          className="pointer-events-auto absolute bottom-1 left-1/2 z-30 flex -translate-x-1/2 gap-1"
-          style={{ transform: `translateX(-50%) scale(${1 / scale})` }}
+          className="pointer-events-auto absolute top-1 left-1/2 z-30 flex gap-1"
+          // Counter-scaled so the targets stay usable on a shrunken frame, and
+          // grown downward from the top edge rather than outward from its middle.
+          style={{
+            transform: `translateX(-50%) scale(${1 / scale})`,
+            transformOrigin: 'top center',
+          }}
         >
           {panel.slides.map((slide, slideIndex) => (
             <button

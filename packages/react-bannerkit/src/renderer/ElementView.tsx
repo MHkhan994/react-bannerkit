@@ -13,6 +13,7 @@ import type { CSSProperties, ReactNode } from 'react'
 
 import { iconPath } from '../core/icons'
 import type { BannerElement } from '../core/types'
+import { du } from '../core/units'
 
 export interface ElementContext {
   /** Renders an icon glyph. Supplied by the consumer to use their own icon set. */
@@ -134,7 +135,7 @@ export function ElementView({ element, context }: ElementViewProps) {
           className={`bnbr-${element.type}${place.className}`}
           style={{
             ...place.style,
-            fontSize: `${element.fs}px`,
+            fontSize: du(element.fs),
             fontWeight: element.weight,
             color: element.color,
             textAlign: element.align,
@@ -150,11 +151,12 @@ export function ElementView({ element, context }: ElementViewProps) {
       const solid = element.variant === 'solid'
       const style: CSSProperties = {
         ...place.style,
-        fontSize: `${element.fs}px`,
-        borderRadius: `${element.radius}px`,
+        fontSize: du(element.fs),
+        borderRadius: du(element.radius),
         color: solid ? '#201f1d' : element.color,
         background: solid ? element.color : 'transparent',
-        border: element.variant === 'ghost' ? '1px solid transparent' : `1px solid ${element.color}`,
+        border:
+          element.variant === 'ghost' ? `${du(1)} solid transparent` : `${du(1)} solid ${element.color}`,
       }
       const className = `bnbr-button${place.className}`
 
@@ -180,7 +182,7 @@ export function ElementView({ element, context }: ElementViewProps) {
     case 'link': {
       const style: CSSProperties = {
         ...place.style,
-        fontSize: `${element.fs}px`,
+        fontSize: du(element.fs),
         color: element.color,
         textDecoration: element.underline ? 'underline' : 'none',
       }
@@ -212,8 +214,8 @@ export function ElementView({ element, context }: ElementViewProps) {
             ...place.style,
             width: `${element.width}%`,
             objectFit: element.fit,
-            borderRadius: `${element.radius}px`,
-            ...(element.plate ? { border: `6px solid ${element.plateColor}` } : {}),
+            borderRadius: du(element.radius),
+            ...(element.plate ? { border: `${du(6)} solid ${element.plateColor}` } : {}),
           }}
         />
       )
@@ -232,15 +234,15 @@ export function ElementView({ element, context }: ElementViewProps) {
           {...identity}
           aria-hidden="true"
           className={`bnbr-spacer${place.className}`}
-          style={{ ...place.style, height: `${element.size}px` }}
+          style={{ ...place.style, height: du(element.size) }}
         />
       )
 
     case 'icon': {
       const style: CSSProperties = {
         ...place.style,
-        width: `${element.fs}px`,
-        height: `${element.fs}px`,
+        width: du(element.fs),
+        height: du(element.fs),
         color: element.color,
       }
       return (

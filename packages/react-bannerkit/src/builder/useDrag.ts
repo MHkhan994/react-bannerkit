@@ -76,15 +76,16 @@ function beginDrag(
  *
  * The frame's rect and the split's starting ratio are captured once, on press,
  * so the maths stays stable even as the tree re-renders underneath the gesture.
+ *
+ * `frame` is the rendered `.bnbr-frame` element, not a box the canvas sized
+ * itself. A divider's `rect` is a percentage of the frame the panels divide, and
+ * under `fit`/`cover` that frame is letterboxed or cropped inside its wrapper -
+ * so measuring the wrapper turned a pointer delta into a ratio against a
+ * rectangle of the wrong size, and the split landed away from the pointer.
  */
-export function useDividerDrag(
-  frameRef: React.RefObject<HTMLElement | null>,
-  dispatch: Dispatch,
-  scale: number,
-) {
+export function useDividerDrag(frame: HTMLElement | null, dispatch: Dispatch, scale: number) {
   return useCallback(
     (event: React.PointerEvent, divider: LayoutDivider, ratio: number) => {
-      const frame = frameRef.current
       if (!frame) return
 
       const box = frame.getBoundingClientRect()
@@ -107,7 +108,7 @@ export function useDividerDrag(
         })
       })
     },
-    [dispatch, frameRef, scale],
+    [dispatch, frame, scale],
   )
 }
 

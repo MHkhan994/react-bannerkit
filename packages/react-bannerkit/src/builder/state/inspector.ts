@@ -12,12 +12,16 @@
  */
 import { DEFAULT_SWATCHES } from '../../core/defaults'
 import { ICONS } from '../../core/icons'
+import { MIN_BANNER_HEIGHT } from '../../core/layout'
 import { countPanels, listPanels } from '../../core/tree'
-import type {
-  BannerElement,
-  BannerPanel,
-  BannerSlide,
-  FontWeight,
+import {
+  DESIGN_WIDTH_RANGE,
+  designWidthOf,
+  type BannerElement,
+  type BannerPanel,
+  type BannerSlide,
+  type FontWeight,
+  type FrameHeightUnit,
 } from '../../core/types'
 import {
   activeHost,
@@ -170,44 +174,100 @@ function templateFields(state: EditorState): InspectorModel {
     },
     {
       kind: 'segmented',
-      label: 'Height mode',
-      value: bp.heightMode,
+      label: 'Size mode',
+      value: bp.sizeMode,
       options: [
-        { value: 'fixed', label: 'Fixed' },
-        { value: 'vh', label: 'Viewport' },
+        { value: 'ratio', label: 'Ratio' },
+        { value: 'fit', label: 'Fit' },
+        { value: 'cover', label: 'Cover' },
       ],
       onChange: (value) => ({
         type: 'updateBreakpoint',
-        patch: { heightMode: value as 'fixed' | 'vh' },
+        patch: { sizeMode: value as 'ratio' | 'fit' | 'cover' },
       }),
     },
   ]
 
-  /*
-   * Only one of these is ever shown. Offering both would leave the user guessing
-   * which one the banner is actually using.
-   */
-  if (bp.heightMode === 'vh') {
+  fields.push({
+    kind: 'number',
+    label: 'Design width',
+    hint: 'optional',
+    value: designWidthOf(doc, state.breakpoint),
+    min: DESIGN_WIDTH_RANGE.min,
+    max: DESIGN_WIDTH_RANGE.max,
+    step: 10,
+    onChange: (value) => ({
+      type: 'setDesignWidth',
+      breakpoint: state.breakpoint,
+      width: value,
+    }),
+  })
+
+  // Always shown: the design has a shape even in `fit`/`cover`, where the
+  // frame it is poured into is a separate number below.
+  fields.push({
+    kind: 'number',
+    label: 'Design height',
+    hint: `px at ${designWidthOf(doc, state.breakpoint)} wide`,
+    value: bp.designHeight,
+    min: MIN_BANNER_HEIGHT,
+    max: 4000,
+    step: 10,
+    onChange: (value) => ({ type: 'updateBreakpoint', patch: { designHeight: value } }),
+  })
+
+  if (bp.sizeMode !== 'ratio') {
+    /*
+     * Two heights, named plainly. They are genuinely different things - the
+     * shape of the design, and the slot it is poured into - and collapsing them
+     * into one control would hide which is which.
+     */
+    if (bp.frameHeightUnit === 'vh') {
+      fields.push({
+        kind: 'range',
+        label: 'Frame height',
+        hint: `${bp.frameHeight}% of screen`,
+        value: bp.frameHeight,
+        min: 10,
+        max: 100,
+        step: 5,
+        onChange: (value) => ({ type: 'updateBreakpoint', patch: { frameHeight: value } }),
+      })
+    } else {
+      fields.push({
+        kind: 'number',
+        label: 'Frame height',
+        hint: 'px',
+        value: bp.frameHeight,
+        min: MIN_BANNER_HEIGHT,
+        max: 4000,
+        step: 10,
+        onChange: (value) => ({ type: 'updateBreakpoint', patch: { frameHeight: value } }),
+      })
+    }
+
     fields.push({
-      kind: 'range',
-      label: 'Share of screen',
-      hint: `${bp.vh}% of screen`,
-      value: bp.vh,
-      min: 10,
-      max: 100,
-      step: 5,
-      onChange: (value) => ({ type: 'updateBreakpoint', patch: { vh: value } }),
-    })
-  } else {
-    fields.push({
-      kind: 'number',
-      label: 'Height',
-      hint: 'px',
-      value: bp.height,
-      min: 120,
-      max: 2000,
-      step: 10,
-      onChange: (value) => ({ type: 'updateBreakpoint', patch: { height: value } }),
+      kind: 'segmented',
+      label: 'Frame height unit',
+      value: bp.frameHeightUnit,
+      options: [
+        { value: 'px', label: 'px' },
+        { value: 'vh', label: '% of screen' },
+      ],
+      /*
+       * The number itself is carried across, clamped into the target unit's
+       * range. Nothing here converts px to vh or back - there is no honest
+       * conversion without knowing the device's screen height twice over - so
+       * clamping is the whole story: a 420px frame becomes a 100vh one rather
+       * than an impossible 420vh, and a 70vh frame becomes 120px, the floor,
+       * rather than an unreasonable 70px.
+       */
+      onChange: (value) => {
+        const unit = value as FrameHeightUnit
+        const [min, max] = unit === 'vh' ? [10, 100] : [MIN_BANNER_HEIGHT, 4000]
+        const frameHeight = Math.min(max, Math.max(min, bp.frameHeight))
+        return { type: 'updateBreakpoint', patch: { frameHeightUnit: unit, frameHeight } }
+      },
     })
   }
 

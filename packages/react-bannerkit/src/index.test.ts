@@ -8,12 +8,19 @@
  */
 import { describe, expect, test } from 'vitest'
 import * as api from './index'
+import type { SizeMode } from './index'
+
+// Type-only: SizeMode is erased at runtime, so the only honest check that it
+// is still exported is that this still compiles. Do not fake a runtime
+// assertion for it.
+const _sizeModeIsExported: SizeMode = 'ratio'
+void _sizeModeIsExported
 
 describe('root entry', () => {
   test('exports the document helpers a consumer needs', () => {
     expect(typeof api.createDefaultTemplate).toBe('function')
     expect(typeof api.normalizeTemplate).toBe('function')
-    expect(api.CURRENT_SCHEMA_VERSION).toBe(1)
+    expect(api.CURRENT_SCHEMA_VERSION).toBe(2)
   })
 
   test('exports the tree operations, so a consumer can build templates in code', () => {
@@ -24,13 +31,17 @@ describe('root entry', () => {
 
   test('exports the geometry helpers the renderer and editor share', () => {
     expect(typeof api.computeLayout).toBe('function')
-    expect(typeof api.resolveHeight).toBe('function')
+    expect(typeof api.resolveFrameHeight).toBe('function')
     expect(typeof api.insetStyle).toBe('function')
   })
 
   test('exports device metrics, so a consumer can label a preview correctly', () => {
     expect(api.DEVICES.laptop.width).toBe(1280)
     expect(api.BREAKPOINT_ORDER).toEqual(['laptop', 'tablet', 'mobile'])
+  })
+
+  test('exports designWidthOf, so a consumer can resolve a breakpoint\'s design width', () => {
+    expect(typeof api.designWidthOf).toBe('function')
   })
 
   test('creates a template that round-trips through normalize unchanged', () => {
