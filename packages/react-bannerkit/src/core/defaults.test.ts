@@ -84,8 +84,8 @@ describe('createDefaultTemplate', () => {
 
   test('each breakpoint starts at its device default height', () => {
     const t = createDefaultTemplate()
-    expect(t.breakpoints.laptop.height).toBe(DEVICES.laptop.height)
-    expect(t.breakpoints.mobile.height).toBe(DEVICES.mobile.height)
+    expect(t.breakpoints.laptop.designHeight).toBe(DEVICES.laptop.height)
+    expect(t.breakpoints.mobile.designHeight).toBe(DEVICES.mobile.height)
   })
 
   test('mobile gets smaller type and tighter padding than laptop', () => {

@@ -1,0 +1,98 @@
+/*
+ * Layout for the sizing acceptance page, plus the report table/verdict
+ * styles. The table and verdict rules are deliberately identical to
+ * /hostile's `hostile.css` — this report is a sibling of IsolationReport,
+ * not a differently-styled one.
+ */
+
+.sizing-page {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+  font-family: system-ui, sans-serif;
+  color: rgb(41 37 36);
+}
+
+/*
+ * `overflow-x: auto` rather than letting the flex row wrap or shrink its
+ * children: a wrapper wider than the viewport (1640px) has to keep its
+ * declared width and scroll into view, not get squeezed to fit. A clamped
+ * wrapper would silently change the cqw the banner reads and this route
+ * would stop testing what it claims to.
+ */
+.sizing-wrappers {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: 24px;
+  overflow-x: auto;
+}
+
+.sizing-column {
+  flex: 0 0 auto;
+  /* Never let the column shrink below its wrapper's declared width. */
+  min-width: max-content;
+}
+
+.sizing-column h2 {
+  font-size: 14px;
+  font-family: ui-monospace, monospace;
+  color: rgb(87 83 78);
+  margin-bottom: 8px;
+}
+
+/*
+ * The measured box itself. No `max-width` here on purpose — a wrapper
+ * declared 1640px wide must measure exactly 1640px regardless of the
+ * viewport; `.sizing-wrappers` scrolls instead of this shrinking. The border
+ * is cosmetic only and sits outside the wrapper's own width so it never
+ * perturbs the cqw the banner reads.
+ */
+.sizing-wrapper {
+  outline: 2px dashed rgb(168 162 158);
+  outline-offset: 2px;
+}
+
+.report {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.report th,
+.report td {
+  border: 1px solid rgb(214 211 209);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.report td.pass {
+  color: rgb(21 128 61);
+  font-weight: 700;
+}
+
+.report td.fail {
+  color: rgb(185 28 28);
+  font-weight: 700;
+}
+
+.verdict-pass {
+  border: 3px solid rgb(21 128 61);
+  background-color: rgb(240 253 244);
+  color: rgb(21 128 61);
+  padding: 14px 18px;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+}
+
+.verdict-fail {
+  border: 3px solid rgb(185 28 28);
+  background-color: rgb(254 242 242);
+  color: rgb(185 28 28);
+  padding: 14px 18px;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+}

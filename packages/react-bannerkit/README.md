@@ -120,18 +120,57 @@ layout shift while JavaScript loads.
 
 ### Responsive behaviour
 
-By default the renderer emits **all three layouts** and lets media queries
-choose: `mobile` below 768px, `tablet` to 1023px, `laptop` above.
+By default the renderer emits **all three layouts** and lets a CSS **container
+query** choose between them — evaluated against the width of the box the
+banner itself is given, not the browser viewport. A banner dropped into a
+500px sidebar on a 1920px monitor gets the mobile tree; the same banner
+spanning a wide column gets the laptop tree even in a narrow browser window.
+The thresholds are `mobile` below 768px of container width, `tablet` up to
+1023.98px, `laptop` above.
 
-This is deliberate. Measuring the container in JavaScript and rendering one tree
-cannot be server-rendered — it either guesses and snaps to the right layout on
-hydration, or renders nothing and shifts the page. Both cost LCP and CLS on
-exactly the pages banners live on. Three small trees cost DOM nodes, which are
-cheap, and buy a correct first paint.
+This is deliberate, for two reasons. First, measuring the container in
+JavaScript and rendering one tree cannot be server-rendered — it either
+guesses and snaps to the right layout on hydration, or renders nothing and
+shifts the page. Both cost LCP and CLS on exactly the pages banners live on.
+Three small trees cost DOM nodes, which are cheap, and buy a correct first
+paint. Second, a component that can sit in a sidebar, a modal, or a
+multi-column grid has no fixed relationship to the viewport at all — the
+container is the only box that answers "how much room does this banner
+actually have."
+
+The laptop tree is visible by default, so a browser without `@container`
+support still shows a banner instead of nothing — the query is simply ignored.
 
 If you already know the device — server-side UA detection, a native webview —
 pass `breakpoint`. That path also marks the panel background `fetchpriority="high"`,
 which the CSS-driven path cannot do safely.
+
+### Scaling
+
+A breakpoint is authored at a fixed pixel size — its **design width** — and
+every number in the document (font sizes, padding, gutters, radii, …) is a
+design-pixel value relative to that width. None of it is emitted as `px` at
+render time: it comes out as a multiple of `--bnbr-u`, a CSS custom property
+the frame computes from the *container's* width with `cqw`. Give the banner
+more room and `--bnbr-u` grows, and every value in the layout grows with it in
+proportion — no JavaScript ever measures anything.
+
+Each breakpoint picks how its design fills the frame with `sizeMode`:
+
+| Mode | Behaviour |
+| --- | --- |
+| `ratio` (default) | The frame's height follows its width. `designHeight` fixes the aspect ratio, so the whole design scales uniformly in both axes. |
+| `fit` | The frame has a fixed `frameHeight`; the design is scaled to fit inside it and letterboxed, with `bg` showing in the margin. |
+| `cover` | The frame has a fixed `frameHeight`; the design is scaled to fill it and the overflowing edges are cropped. |
+
+`frameHeight` is read only by `fit` and `cover`, and its unit (`frameHeightUnit`,
+`'px' | 'vh'`) can be `vh` — useful for a hero banner meant to fill most of the
+viewport regardless of its own design width.
+
+The design width itself defaults to the device width the breakpoint is named
+after (1280 for laptop, 834 for tablet, 390 for mobile). A template can
+override any of them with `designWidths`, for a design authored at a different
+canvas size.
 
 ## The document model
 
@@ -139,8 +178,8 @@ A template holds three fully independent layouts. Each is a binary tree: a node
 is either a **split** (two children and a ratio) or a **panel** (a leaf).
 
 ```ts
-BannerTemplate  { version, id, name, description, createdAt, breakpoints }
-BannerBreakpoint{ height, heightMode, vh, gutter, bg, root }
+BannerTemplate  { version, id, name, description, createdAt, designWidths?, breakpoints }
+BannerBreakpoint{ sizeMode, designHeight, frameHeight, frameHeightUnit, gutter, bg, root }
 BannerNode      = BannerSplit | BannerPanel
 BannerSplit     { dir: 'cols' | 'rows', ratio, a, b }
 BannerPanel     { type: 'single' | 'carousel', …, slides[], elements[] }
@@ -270,10 +309,40 @@ Pass `renderIcon` to use your own set.
 | `react-bannerkit/builder` | `<BannerBuilder>` and the editor state layer. |
 | `react-bannerkit/renderer` | `<BannerRenderer>`, `<Carousel>`, the icon set. |
 | `react-bannerkit/builder.css` | The editor's stylesheet. Includes the renderer's rules, because the editor draws real banners on its canvas and in preview — so this is the only import an admin screen needs. |
-| `react-bannerkit/renderer.css` | The renderer's stylesheet, ~8kB, no Tailwind. Needed on pages that use `<BannerRenderer>` without the editor. |
+| `react-bannerkit/renderer.css` | The renderer's stylesheet, ~4.4 kB gzipped (13 kB raw), no Tailwind. Needed on pages that use `<BannerRenderer>` without the editor. |
 
 The renderer entry contains no editor code — a build-time check walks its import
 graph and fails if any appears.
+
+## Upgrading to 0.1.5
+
+This release replaces the old fixed-1280px-canvas renderer with the scaling
+model described in [Scaling](#scaling): a banner now grows and shrinks
+proportionally with whatever box it is given, and the three breakpoint trees
+are chosen by a container query against the banner's own width rather than a
+media query against the browser viewport — see
+[Responsive behaviour](#responsive-behaviour).
+
+**Breaking changes:**
+
+| Removed | Replacement |
+| --- | --- |
+| `HeightMode` (type) | `SizeMode` — `'ratio' \| 'fit' \| 'cover'`, replacing `'fixed' \| 'vh'` |
+| `resolveHeight` (function) | `resolveFrameHeight` |
+
+Both are gone from the package entirely, so importing either one is a build
+error, not a runtime surprise. `BannerBreakpoint` changed shape to match:
+`height`, `heightMode`, and `vh` are replaced by `sizeMode`, `designHeight`,
+`frameHeight`, and `frameHeightUnit` — see [The document model](#the-document-model).
+
+**Stored templates need no action.** `normalizeTemplate` migrates a document
+saved by 0.1.x the first time it is read: `heightMode: 'fixed'` becomes
+`sizeMode: 'ratio'`, and `heightMode: 'vh'` becomes `sizeMode: 'fit'` (with
+`designHeight` derived from the device's nominal screen height and the old
+`vh` percentage, so the proportions the author was looking at are preserved).
+The migrated document reports `version: 2`. Nothing needs to be re-saved for a
+banner to keep rendering correctly; saving again after any edit persists the
+migrated shape.
 
 ## Licence
 

@@ -7,11 +7,18 @@
  * No "use client": this component and everything it renders except the carousel
  * works on the server, so a banner is present in the initial HTML.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, Ref } from 'react'
 
-import { computeLayout, insetStyle, resolveHeight } from '../core/layout'
+import { computeLayout, insetStyle } from '../core/layout'
 import { normalizeTemplate } from '../core/normalize'
-import { BREAKPOINT_ORDER, type BannerBreakpoint, type BannerElement, type BannerTemplate, type BreakpointName } from '../core/types'
+import {
+  BREAKPOINT_ORDER,
+  designWidthOf,
+  type BannerBreakpoint,
+  type BannerElement,
+  type BannerTemplate,
+  type BreakpointName,
+} from '../core/types'
 import { PanelView } from './PanelView'
 import type { ElementContext } from './ElementView'
 
@@ -48,35 +55,91 @@ export interface BannerRendererProps {
     | undefined
   onPanelPointerDown?: ((panelId: string, event: React.PointerEvent) => void) | undefined
   selectedElementId?: string | undefined
+  /**
+   * The `.bnbr-frame` box, as the renderer actually laid it out.
+   *
+   * The editor draws its chrome, hit targets and divider maths against this
+   * element rather than against a rectangle of its own: under `fit` and `cover`
+   * the frame is letterboxed or cropped inside its wrapper by CSS, so a box the
+   * editor computed from `designWidth x frameHeight` is the wrong one. Handing
+   * the element out is what leaves the geometry with a single owner.
+   *
+   * Honoured only alongside an explicit `breakpoint`. The responsive path emits
+   * all three trees and so has three frames; a single ref could only point at
+   * one of them, and which one would be an accident of render order.
+   */
+  frameRef?: Ref<HTMLDivElement> | undefined
   /** Accessible name for the banner region. */
   label?: string
 }
 
-function frameHeight(breakpoint: BannerBreakpoint, device: BreakpointName): string {
-  /*
-   * Viewport mode emits real `vh` and lets the browser resolve it. The editor
-   * canvas resolves it against a nominal screen height instead, because it has
-   * to draw a truthful preview inside a few hundred pixels - that is what
-   * `resolveHeight` is for, and it is deliberately not used here.
-   */
-  if (breakpoint.heightMode === 'vh') return `${breakpoint.vh}vh`
-  return `${resolveHeight(breakpoint, device)}px`
+/*
+ * `CSSProperties` has no room for custom properties, so the type is widened
+ * here rather than cast at the call site - React passes anything beginning
+ * with `--` straight through to the style attribute. Same pattern as
+ * `dividerStyle` in the builder's `Canvas.tsx`.
+ */
+type SizingStyle = CSSProperties & {
+  '--bnbr-dw': number
+  '--bnbr-dh': number
+}
+
+/** Style for the `.bnbr-bp`/`.bnbr-bp-fixed` wrapper: the sizing container. */
+function sizingStyle(breakpoint: BannerBreakpoint, designWidth: number): SizingStyle {
+  return {
+    '--bnbr-dw': designWidth,
+    '--bnbr-dh': breakpoint.designHeight,
+    /*
+     * `bg` is painted on this wrapper *as well as* on the frame, because the two
+     * boxes are not the same box and either one can be the visible edge of the
+     * banner.
+     *
+     * The frame needs it: `bg` is what shows through the gutter, which is inset
+     * *inside* the frame. The wrapper needs it too, because under `fit` the
+     * frame is the letterboxed design box and the wrapper is the letterbox - so
+     * the margin above and below the design belongs to the wrapper, and with
+     * only the frame painted the host page showed through it. Both `types.ts`
+     * and the README promise `bg` in that margin, and it was transparent.
+     *
+     * Declaring it unconditionally rather than only for `fit` is not laziness:
+     * under `ratio` the frame is exactly the wrapper, and under `cover` the
+     * frame is larger than the wrapper in both axes and cropped, so in both of
+     * those modes the wrapper is completely covered and painting it changes
+     * nothing. One declaration that is right everywhere beats a branch that has
+     * to be re-reasoned each time a mode is added.
+     */
+    backgroundColor: breakpoint.bg,
+    /*
+     * `ratio` gets its height from `aspect-ratio` in renderer.css, driven by
+     * these same two variables. `fit`/`cover` have no intrinsic height of their
+     * own - the frame is absolutely positioned inside this wrapper - so the
+     * wrapper needs an explicit height instead.
+     */
+    ...(breakpoint.sizeMode === 'ratio'
+      ? {}
+      : {
+          height:
+            breakpoint.frameHeightUnit === 'vh'
+              ? `${breakpoint.frameHeight}vh`
+              : `${breakpoint.frameHeight}px`,
+        }),
+  }
 }
 
 interface BannerFrameProps {
   breakpoint: BannerBreakpoint
-  device: BreakpointName
   context: ElementContext
   eager: boolean
+  frameRef?: Ref<HTMLDivElement> | undefined
 }
 
-function BannerFrame({ breakpoint, device, context, eager }: BannerFrameProps) {
+function BannerFrame({ breakpoint, context, eager, frameRef }: BannerFrameProps) {
   const { leaves } = computeLayout(breakpoint.root)
   return (
     <div
       className="bnbr-frame"
+      ref={frameRef}
       style={{
-        height: frameHeight(breakpoint, device),
         backgroundColor: breakpoint.bg,
       }}
     >
@@ -106,6 +169,7 @@ export function BannerRenderer({
   onElementPointerDown,
   onPanelPointerDown,
   selectedElementId,
+  frameRef,
 }: BannerRendererProps) {
   /*
    * Repair, never trust. The template arrives from the consumer's database and
@@ -135,14 +199,20 @@ export function BannerRenderer({
   })
 
   if (breakpoint) {
+    const bp = document_.breakpoints[breakpoint]
     return (
       <div className={rootClass} style={style} role="region" aria-label={label ?? document_.name}>
-        <div className="bnbr-bp-fixed" data-bp={breakpoint}>
+        <div
+          className="bnbr-bp-fixed"
+          data-bp={breakpoint}
+          data-size-mode={bp.sizeMode}
+          style={sizingStyle(bp, designWidthOf(document_, breakpoint))}
+        >
           <BannerFrame
-            breakpoint={document_.breakpoints[breakpoint]}
-            device={breakpoint}
+            breakpoint={bp}
             context={contextFor(breakpoint)}
             eager
+            frameRef={frameRef}
           />
         </div>
       </div>
@@ -150,7 +220,7 @@ export function BannerRenderer({
   }
 
   /*
-   * All three layouts are emitted and media queries in renderer.css choose
+   * All three layouts are emitted and container queries in renderer.css choose
    * between them.
    *
    * The alternative - measuring the container and rendering one tree - cannot be
@@ -160,22 +230,26 @@ export function BannerRenderer({
    * are cheap, and buy a correct first paint.
    *
    * `eager` is false for every tree here: the browser cannot be told which one a
-   * media query will reveal, so no background is marked high priority rather
-   * than eagerly fetching three heroes. Consumers who know the device can pass
-   * `breakpoint` and get the eager path above.
+   * container query will reveal, so no background is marked high priority
+   * rather than eagerly fetching three heroes. Consumers who know the device
+   * can pass `breakpoint` and get the eager path above.
    */
   return (
     <div className={rootClass} style={style} role="region" aria-label={label ?? document_.name}>
-      {BREAKPOINT_ORDER.map((device) => (
-        <div key={device} className="bnbr-bp" data-bp={device}>
-          <BannerFrame
-            breakpoint={document_.breakpoints[device]}
-            device={device}
-            context={contextFor(device)}
-            eager={false}
-          />
-        </div>
-      ))}
+      {BREAKPOINT_ORDER.map((device) => {
+        const bp = document_.breakpoints[device]
+        return (
+          <div
+            key={device}
+            className="bnbr-bp"
+            data-bp={device}
+            data-size-mode={bp.sizeMode}
+            style={sizingStyle(bp, designWidthOf(document_, device))}
+          >
+            <BannerFrame breakpoint={bp} context={contextFor(device)} eager={false} />
+          </div>
+        )
+      })}
     </div>
   )
 }

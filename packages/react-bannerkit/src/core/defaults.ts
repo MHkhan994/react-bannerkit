@@ -190,9 +190,10 @@ function createBreakpoint(name: BreakpointName, id: IdFactory): BannerBreakpoint
     }
   }
   return {
-    height: device.height,
-    heightMode: 'fixed',
-    vh: 100,
+    sizeMode: 'ratio',
+    designHeight: device.height,
+    frameHeight: device.height,
+    frameHeightUnit: 'px',
     gutter: 0,
     bg: SURFACE,
     root,

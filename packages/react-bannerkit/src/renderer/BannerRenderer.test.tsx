@@ -18,7 +18,7 @@ import '../test/setup'
 import { createDefaultTemplate, createElement, createPanel } from '../core/defaults'
 import { createSequentialIdFactory } from '../core/ids'
 import { splitPanel, updatePanel } from '../core/tree'
-import type { BannerTemplate } from '../core/types'
+import { DEVICES, designWidthOf, type BannerTemplate } from '../core/types'
 import { BannerRenderer } from './BannerRenderer'
 
 const ids = () => createSequentialIdFactory('t')
@@ -29,6 +29,25 @@ const template = (overrides?: (t: BannerTemplate) => void): BannerTemplate => {
 }
 
 const bp = (name: string) => document.querySelector(`.bnbr-bp[data-bp="${name}"]`)
+
+/*
+ * Extracts one element's opening tag from server-rendered HTML, for asserting
+ * on its inline style.
+ *
+ * Several assertions below read a `calc()`-wrapped design-px value (e.g.
+ * `calc(var(--bnbr-u) * 40)`) rather than a plain px string. happy-dom's
+ * CSSStyleDeclaration validates length-typed properties with a `calc()`
+ * regex that does not allow nested parentheses, so setting that value via
+ * `render()` + `.style.foo` (or even `getAttribute('style')`, which reads
+ * back the same validated state) gets silently dropped instead of stored -
+ * the DOM never has the value to report. Reading the SSR string instead
+ * reflects what the renderer actually emitted.
+ */
+function openTag(html: string, className: string): string {
+  const match = html.match(new RegExp(`<[a-z][a-z0-9]*\\b[^>]*class="${className}(?:\\s[^"]*)?"[^>]*>`))
+  if (!match) throw new Error(`no element with class "${className}" in rendered output`)
+  return match[0]
+}
 
 describe('breakpoints', () => {
   test('emits all three layouts so CSS can choose without JavaScript', () => {
@@ -46,27 +65,66 @@ describe('breakpoints', () => {
     expect(only[0]!.getAttribute('data-bp')).toBe('mobile')
   })
 
-  test('gives each layout the height its breakpoint asks for', () => {
+  test('exposes each ratio layout\'s design height as a custom property, not an inline height', () => {
+    /*
+     * `ratio` gets its height from `aspect-ratio` in renderer.css, driven by
+     * `--bnbr-dw`/`--bnbr-dh`. An inline height here would fight `aspect-ratio`
+     * and pin the frame to design px instead of letting it scale.
+     */
     const t = template((x) => {
-      x.breakpoints.laptop.height = 500
-      x.breakpoints.mobile.height = 300
+      x.breakpoints.laptop.designHeight = 500
+      x.breakpoints.mobile.designHeight = 300
     })
     render(<BannerRenderer template={t} />)
-    expect(bp('laptop')?.querySelector('.bnbr-frame')).toHaveProperty('style')
-    const laptopFrame = bp('laptop')!.querySelector<HTMLElement>('.bnbr-frame')!
-    const mobileFrame = bp('mobile')!.querySelector<HTMLElement>('.bnbr-frame')!
-    expect(laptopFrame.style.height).toBe('500px')
-    expect(mobileFrame.style.height).toBe('300px')
+    const laptopWrapper = bp('laptop') as HTMLElement
+    const mobileWrapper = bp('mobile') as HTMLElement
+    expect(laptopWrapper.style.getPropertyValue('--bnbr-dh')).toBe('500')
+    expect(mobileWrapper.style.getPropertyValue('--bnbr-dh')).toBe('300')
+    expect(laptopWrapper.style.height).toBe('')
+    expect(laptopWrapper.querySelector<HTMLElement>('.bnbr-frame')!.style.height).toBe('')
   })
 
-  test('expresses a viewport height in vh, letting the browser resolve it', () => {
+  test('sizes the fit/cover wrapper in vh, letting the browser resolve it', () => {
+    /*
+     * `fit`/`cover` have no intrinsic height - the frame inside is absolutely
+     * positioned - so the wrapper (`.bnbr-bp`), not `.bnbr-frame`, carries the
+     * height.
+     */
     const t = template((x) => {
-      x.breakpoints.laptop.heightMode = 'vh'
-      x.breakpoints.laptop.vh = 60
+      x.breakpoints.laptop.sizeMode = 'fit'
+      x.breakpoints.laptop.frameHeightUnit = 'vh'
+      x.breakpoints.laptop.frameHeight = 60
     })
     render(<BannerRenderer template={t} />)
-    const frame = bp('laptop')!.querySelector<HTMLElement>('.bnbr-frame')!
-    expect(frame.style.height).toBe('60vh')
+    const wrapper = bp('laptop') as HTMLElement
+    expect(wrapper.style.height).toBe('60vh')
+    expect(wrapper.querySelector<HTMLElement>('.bnbr-frame')!.style.height).toBe('')
+  })
+
+  test('gives every sizing wrapper its data-size-mode and scale variables, responsive and pinned alike', () => {
+    /*
+     * Every `@supports` rule in renderer.css keys off `data-size-mode`, and
+     * `--bnbr-dw`/`--bnbr-dh` feed every scale calculation. Missing either on
+     * either wrapper type - `.bnbr-bp` or `.bnbr-bp-fixed` - would leave that
+     * path unscaled with nothing failing loudly, since a missing custom
+     * property just resolves to nothing rather than throwing.
+     */
+    const t = template()
+
+    const responsive = render(<BannerRenderer template={t} />)
+    const laptop = bp('laptop') as HTMLElement
+    expect(laptop.getAttribute('data-size-mode')).toBe(t.breakpoints.laptop.sizeMode)
+    expect(laptop.style.getPropertyValue('--bnbr-dw')).toBe(String(designWidthOf(t, 'laptop')))
+    expect(laptop.style.getPropertyValue('--bnbr-dh')).toBe(String(t.breakpoints.laptop.designHeight))
+    responsive.unmount()
+
+    render(<BannerRenderer template={t} breakpoint="tablet" />)
+    const fixed = document.querySelector('.bnbr-bp-fixed') as HTMLElement
+    expect(fixed.getAttribute('data-size-mode')).toBe(t.breakpoints.tablet.sizeMode)
+    expect(fixed.style.getPropertyValue('--bnbr-dw')).toBe(String(designWidthOf(t, 'tablet')))
+    expect(fixed.style.getPropertyValue('--bnbr-dh')).toBe(String(t.breakpoints.tablet.designHeight))
+    // Sanity: the default template really does use the built-in device width.
+    expect(designWidthOf(t, 'tablet')).toBe(DEVICES.tablet.width)
   })
 })
 
@@ -102,9 +160,8 @@ describe('resilience', () => {
       const root = x.breakpoints.laptop.root as unknown as Record<string, unknown>
       root.pad = -50
     })
-    render(<BannerRenderer template={t} />)
-    const stack = bp('laptop')!.querySelector<HTMLElement>('.bnbr-stack')!
-    expect(stack.style.padding).toBe('0px')
+    const html = renderToStaticMarkup(<BannerRenderer template={t} breakpoint="laptop" />)
+    expect(openTag(html, 'bnbr-stack')).toContain('padding:calc(var(--bnbr-u) * 0)')
   })
 })
 
@@ -123,11 +180,9 @@ describe('padding sits on the stack, not the panel', () => {
         { pad: 40, bgMode: 'photo', img: 'https://example.test/hero.jpg' },
       )
     })
-    render(<BannerRenderer template={t} breakpoint="laptop" />)
-    const panel = document.querySelector<HTMLElement>('.bnbr-panel')!
-    const stack = document.querySelector<HTMLElement>('.bnbr-stack')!
-    expect(panel.style.padding).toBe('')
-    expect(stack.style.padding).toBe('40px')
+    const html = renderToStaticMarkup(<BannerRenderer template={t} breakpoint="laptop" />)
+    expect(openTag(html, 'bnbr-panel')).not.toContain('padding')
+    expect(openTag(html, 'bnbr-stack')).toContain('padding:calc(var(--bnbr-u) * 40)')
   })
 
   test('carries the panel alignment and gap onto the stack', () => {
@@ -142,7 +197,7 @@ describe('padding sits on the stack, not the panel', () => {
     const stack = document.querySelector<HTMLElement>('.bnbr-stack')!
     expect(stack.style.alignItems).toBe('center')
     expect(stack.style.justifyContent).toBe('flex-end')
-    expect(stack.style.gap).toBe('22px')
+    expect(stack.style.gap).toBe('calc(var(--bnbr-u) * 22)')
   })
 })
 
@@ -218,10 +273,54 @@ describe('panel geometry', () => {
     const t = template((x) => {
       x.breakpoints.laptop.gutter = 16
     })
-    render(<BannerRenderer template={t} breakpoint="laptop" />)
-    const panel = document.querySelector<HTMLElement>('.bnbr-panel')!
-    expect(panel.style.left).toBe('calc(0% + 8px)')
-    expect(panel.style.width).toBe('calc(100% - 16px)')
+    const html = renderToStaticMarkup(<BannerRenderer template={t} breakpoint="laptop" />)
+    const panelTag = openTag(html, 'bnbr-panel')
+    expect(panelTag).toContain('left:calc(0% + calc(var(--bnbr-u) * 8))')
+    expect(panelTag).toContain('width:calc(100% - calc(var(--bnbr-u) * 16))')
+  })
+
+  /*
+   * `bg` has two jobs and two boxes to do them in, and until now it was only
+   * declared on one of them.
+   *
+   * It fills the gutter, which is inset *inside* the frame - the assertion
+   * below this one. Under `fit` it is also the letterbox: the frame is the
+   * scaled design box, centred inside a wrapper that reserves `frameHeight`, so
+   * the margin above and below the design belongs to the wrapper. With only the
+   * frame painted, that margin was transparent and the host page showed through
+   * it - measured as two 79px bands of whatever colour the page happened to be,
+   * on a claim both the README and `types.ts` make explicitly.
+   *
+   * Asserted on the server-rendered string rather than through the DOM because
+   * the wrapper's other declarations are `calc(var(--bnbr-u) * n)` lengths that
+   * happy-dom drops, and reading a style attribute back reads the same
+   * validated state.
+   */
+  test.each(['ratio', 'fit', 'cover'] as const)(
+    'paints the frame colour on the sizing wrapper as well as the frame, in %s',
+    (sizeMode) => {
+      const t = template((x) => {
+        x.breakpoints.laptop.sizeMode = sizeMode
+        x.breakpoints.laptop.frameHeight = 800
+        x.breakpoints.laptop.frameHeightUnit = 'px'
+        x.breakpoints.laptop.bg = 'rgb(1, 2, 3)'
+      })
+      const html = renderToStaticMarkup(<BannerRenderer template={t} breakpoint="laptop" />)
+      expect(openTag(html, 'bnbr-bp-fixed')).toContain('background-color:rgb(1, 2, 3)')
+      expect(openTag(html, 'bnbr-frame')).toContain('background-color:rgb(1, 2, 3)')
+    },
+  )
+
+  test('paints it on the responsive wrappers too, which is where a migrated vh document lands', () => {
+    const t = template((x) => {
+      x.breakpoints.mobile.sizeMode = 'fit'
+      x.breakpoints.mobile.frameHeightUnit = 'vh'
+      x.breakpoints.mobile.frameHeight = 100
+      x.breakpoints.mobile.bg = 'rgb(4, 5, 6)'
+    })
+    render(<BannerRenderer template={t} />)
+    const wrapper = bp('mobile') as HTMLElement
+    expect(wrapper.style.backgroundColor).toBe('rgb(4, 5, 6)')
   })
 
   test('shows the frame colour, which is what fills the gutter', () => {
@@ -256,12 +355,12 @@ describe('elements', () => {
   })
 
   test('applies the typography the document asked for', () => {
-    render(<BannerRenderer template={template()} breakpoint="laptop" />)
-    const heading = document.querySelector<HTMLElement>('.bnbr-heading')!
-    expect(heading.textContent).toBe('A season of new arrivals')
-    expect(heading.style.fontSize).toBe('46px')
-    expect(heading.style.fontWeight).toBe('400')
-    expect(heading.style.maxWidth).toBe('26ch')
+    const html = renderToStaticMarkup(<BannerRenderer template={template()} breakpoint="laptop" />)
+    expect(html).toContain('A season of new arrivals')
+    const headingTag = openTag(html, 'bnbr-heading')
+    expect(headingTag).toContain('font-size:calc(var(--bnbr-u) * 46)')
+    expect(headingTag).toContain('font-weight:400')
+    expect(headingTag).toContain('max-width:26ch')
   })
 
   test('renders a button with a destination as a real link', () => {
@@ -303,10 +402,9 @@ describe('elements', () => {
       if (root.kind === 'split') throw new Error('expected a panel')
       root.elements = [createElement('spacer', ids())]
     })
-    render(<BannerRenderer template={t} breakpoint="laptop" />)
-    const spacer = document.querySelector<HTMLElement>('.bnbr-spacer')!
-    expect(spacer.style.height).toBe('18px')
-    expect(spacer.textContent).toBe('')
+    const html = renderToStaticMarkup(<BannerRenderer template={t} breakpoint="laptop" />)
+    expect(openTag(html, 'bnbr-spacer')).toContain('height:calc(var(--bnbr-u) * 18)')
+    expect(html.match(/<div[^>]*class="bnbr-spacer"[^>]*>([\s\S]*?)<\/div>/)?.[1]).toBe('')
   })
 })
 

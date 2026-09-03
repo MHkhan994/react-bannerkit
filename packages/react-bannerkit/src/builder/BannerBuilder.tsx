@@ -212,7 +212,16 @@ export function BannerBuilder({
     const node = canvasRef.current
     if (!node || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(([entry]) => {
-      // The canvas has 32px of padding on each side.
+      /*
+       * `contentRect` of the scroll container, not of the wrapper around it.
+       * When a vertical scrollbar appears the scrollbar takes its width out of
+       * this box while the wrapper stays as wide as it was, so measuring the
+       * wrapper drew the frame ~15px wider than the space it had - a horizontal
+       * scrollbar under every banner tall enough to scroll.
+       *
+       * The 64 is `.bnb-canvas-inner`'s 32px of padding on each side; this
+       * element has none of its own.
+       */
       if (entry) setAvailable(Math.max(0, entry.contentRect.width - 64))
     })
     observer.observe(node)
@@ -262,8 +271,13 @@ export function BannerBuilder({
         ) : (
           <>
             <LeftRail state={state} dispatch={dispatch} />
-            <div ref={canvasRef} className="min-w-0">
-              <Canvas state={state} dispatch={dispatch} available={available} />
+            <div className="min-w-0">
+              <Canvas
+                state={state}
+                dispatch={dispatch}
+                available={available}
+                scrollRef={canvasRef}
+              />
             </div>
             <Inspector state={state} dispatch={dispatch} onUploadImage={onUploadImage} />
           </>

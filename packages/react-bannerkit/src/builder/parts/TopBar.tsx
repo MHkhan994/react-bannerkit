@@ -52,36 +52,40 @@ export function TopBar({
       />
 
       <div className="flex items-center gap-1.5">
-        <span className="bnb-label">Height</span>
+        <span className="bnb-label">Size</span>
         <Segmented
-          label="Height mode"
-          value={bp.heightMode}
+          label="Size mode"
+          value={bp.sizeMode}
           options={[
-            { value: 'fixed', label: 'Fixed' },
-            { value: 'vh', label: 'Viewport' },
+            { value: 'ratio', label: 'Ratio' },
+            { value: 'fit', label: 'Fit' },
+            { value: 'cover', label: 'Cover' },
           ]}
           onChange={(mode) =>
-            dispatch({ type: 'updateBreakpoint', patch: { heightMode: mode as 'fixed' | 'vh' } })
+            dispatch({
+              type: 'updateBreakpoint',
+              patch: { sizeMode: mode as 'ratio' | 'fit' | 'cover' },
+            })
           }
         />
         <Input
           type="number"
           className="w-[70px]"
-          aria-label={bp.heightMode === 'vh' ? 'Share of screen height' : 'Banner height in pixels'}
-          value={bp.heightMode === 'vh' ? bp.vh : bp.height}
-          min={bp.heightMode === 'vh' ? 10 : 120}
-          max={bp.heightMode === 'vh' ? 100 : 2000}
+          aria-label={bp.sizeMode === 'ratio' ? 'Design height in pixels' : 'Frame height'}
+          value={bp.sizeMode === 'ratio' ? bp.designHeight : bp.frameHeight}
+          min={bp.sizeMode !== 'ratio' && bp.frameHeightUnit === 'vh' ? 10 : 120}
+          max={bp.sizeMode !== 'ratio' && bp.frameHeightUnit === 'vh' ? 100 : 4000}
           onChange={(event) => {
             const parsed = Number.parseFloat(event.target.value)
             if (!Number.isFinite(parsed)) return
             dispatch({
               type: 'updateBreakpoint',
-              patch: bp.heightMode === 'vh' ? { vh: parsed } : { height: parsed },
+              patch: bp.sizeMode === 'ratio' ? { designHeight: parsed } : { frameHeight: parsed },
             })
           }}
         />
         <span className="text-[11px] text-muted-foreground">
-          {bp.heightMode === 'vh' ? '% of screen' : 'px'}
+          {bp.sizeMode !== 'ratio' && bp.frameHeightUnit === 'vh' ? '% of screen' : 'px'}
         </span>
       </div>
 

@@ -385,6 +385,15 @@
      */
     height: 100%;
     overflow: auto;
+    /*
+     * Keep the gutter whether or not a scrollbar is showing, so this box is the
+     * same width either way. The frame is scaled to fit this element's measured
+     * width, and without a stable gutter that measurement feeds back into its
+     * own result: a narrower frame is a shorter frame, a shorter frame may not
+     * need the scrollbar, and the width changes again. Reserving the space
+     * removes the loop rather than damping it.
+     */
+    scrollbar-gutter: stable;
     background-color: var(--bnb-canvas);
     display: flex;
     flex-direction: column;
@@ -421,6 +430,24 @@
         transparent 0
       );
     background-size: 10px 10px;
+  }
+
+  /*
+   * The editing chrome layer, which the canvas portals into the rendered
+   * `.bnbr-frame` so that every percentage in it is a percentage of the box the
+   * panels were actually laid out in - see the note in Canvas.tsx.
+   *
+   * The `z-index` is why this needs a rule of its own rather than utilities.
+   * Living inside the frame puts the chrome in the same stacking context as the
+   * banner's own content, where a freely placed element is `z-index: 3` and
+   * carousel chrome is `8`; drawn at `auto` the outlines and split tools would
+   * end up underneath them. Anything above 8 does, and 20 leaves room for
+   * another renderer layer without a second edit here.
+   */
+  .bnb-root .bnb-chrome {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
   }
 
   /* Divider hit strips: 6px of grab area over a 1px visual line. */
@@ -516,13 +543,21 @@
  * links, letter-spacing on buttons - and `!important` beats inline style, so a
  * firewall reaching into `.bnbr` would silently flatten the user's design.
  *
+ * The editing chrome is re-admitted inside that exclusion, because it lives in
+ * `.bnbr` without being part of the design: the canvas portals `.bnb-chrome`
+ * into the rendered frame so its geometry can be the frame's. It is ordinary
+ * editor UI - outlines, icon buttons, drag handles - carrying no document-driven
+ * inline style, so it wants the firewall's protection like the rest of the
+ * editor, and in particular the focus ring below, which is a keyboard user's
+ * only cue on a divider.
+ *
  * This is mitigation, not a proof. The property list is curated, so a host that
  * sets something exotic on a colliding class name can still get through. The
  * complete guarantee needs Tailwind's `prefix()`, which costs a rewrite of every
  * shadcn class string. See README for the trade-off.
  */
 @layer bnb-firewall {
-  .bnb-root *:not(.bnbr, .bnbr *) {
+  .bnb-root *:not(.bnbr, .bnbr *:not(.bnb-chrome, .bnb-chrome *)) {
     /* Typographic decoration: the most common accidental inheritance. */
     text-transform: none !important;
     text-shadow: none !important;
@@ -554,7 +589,7 @@
    * in the same layer at higher specificity. Losing it would take keyboard
    * users' only positional cue with it.
    */
-  .bnb-root :focus-visible:not(.bnbr, .bnbr *) {
+  .bnb-root :focus-visible:not(.bnbr, .bnbr *:not(.bnb-chrome, .bnb-chrome *)) {
     outline: 2px solid var(--bnb-ring) !important;
     outline-offset: 1px !important;
   }

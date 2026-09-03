@@ -29,6 +29,14 @@
   --bnbr-font-heading: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --bnbr-font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
+  /*
+   * Named so `@container bnbr-root` below can pick a breakpoint off this box's
+   * width specifically, rather than whichever ancestor container is nearest -
+   * which, once the sizing containers further down exist, would otherwise be
+   * `.bnbr-bp` itself.
+   */
+  container-type: inline-size;
+  container-name: bnbr-root;
   position: relative;
   display: block;
   font-family: var(--bnbr-font-body);
@@ -108,25 +116,38 @@
  * the right one on hydration, or renders nothing and shifts the page. Both hurt
  * LCP and CLS on exactly the pages banners live on. Emitting three small trees
  * costs DOM nodes, which are cheap, and buys a correct first paint.
+ *
+ * Which layout shows is decided by the width of the container the banner was
+ * given, not the browser window - a 500px sidebar on a 1920px monitor gets the
+ * mobile design, which is the point: with proportional scaling, the laptop
+ * design there would shrink its heading well below its authored size.
+ *
+ * The laptop tree is visible by default so that a browser without container
+ * query support shows a banner rather than nothing - `@container` blocks it
+ * does not understand are simply ignored.
  */
 .bnbr-bp {
   display: none;
 }
 
-@media (max-width: 767px) {
-  .bnbr-bp[data-bp='mobile'] {
-    display: block;
-  }
+.bnbr-bp[data-bp='laptop'] {
+  display: block;
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
+@container bnbr-root (max-width: 1023.98px) {
+  .bnbr-bp[data-bp='laptop'] {
+    display: none;
+  }
   .bnbr-bp[data-bp='tablet'] {
     display: block;
   }
 }
 
-@media (min-width: 1024px) {
-  .bnbr-bp[data-bp='laptop'] {
+@container bnbr-root (max-width: 767.98px) {
+  .bnbr-bp[data-bp='tablet'] {
+    display: none;
+  }
+  .bnbr-bp[data-bp='mobile'] {
     display: block;
   }
 }
@@ -136,12 +157,99 @@
   display: block;
 }
 
+/*
+ * The per-tree sizing container. The container query units the frame uses
+ * below resolve against this box, being nearer than `bnbr-root`. `fit`/`cover`
+ * need `container-type: size` and a definite height, which they always have -
+ * `frameHeight` is set on this element.
+ */
+.bnbr-bp[data-size-mode='ratio'],
+.bnbr-bp-fixed[data-size-mode='ratio'] {
+  container-type: inline-size;
+}
+
+.bnbr-bp[data-size-mode='fit'],
+.bnbr-bp[data-size-mode='cover'],
+.bnbr-bp-fixed[data-size-mode='fit'],
+.bnbr-bp-fixed[data-size-mode='cover'] {
+  container-type: size;
+  position: relative;
+  overflow: hidden;
+}
+
 /* ------------------------------------------------------------------ frame */
 
 .bnbr-frame {
+  /* One real pixel until proven otherwise; see the @supports block below. */
+  --bnbr-u: 1px;
   position: relative;
   width: 100%;
   overflow: hidden;
+}
+
+/*
+ * Kept outside the guard below on purpose: `aspect-ratio` needs no
+ * container-query support, and nesting it there would leave an unsupporting
+ * browser with no height on this frame at all - the same blank banner the
+ * laptop-default rule above already guards against.
+ */
+[data-size-mode='ratio'] > .bnbr-frame {
+  aspect-ratio: var(--bnbr-dw) / var(--bnbr-dh);
+}
+
+/*
+ * Outside the guard for the same reason, and answering the same failure.
+ *
+ * Everything that gives a `fit`/`cover` frame a box - the absolute positioning,
+ * the centring, the width and height - lives in the @supports block below, so
+ * without it the frame kept only `position: relative; width: 100%` and its
+ * absolutely positioned panels left it zero-tall: a blank banner inside a
+ * wrapper reserving `frameHeight`. Filling the wrapper instead degrades to the
+ * design stretched to the frame at its authored pixel sizes, which is a banner
+ * a reader can use. The @supports block overrides this with the real
+ * letterboxed or cropped box; it is written later, at equal specificity.
+ */
+[data-size-mode='fit'] > .bnbr-frame,
+[data-size-mode='cover'] > .bnbr-frame {
+  height: 100%;
+}
+
+/*
+ * Not a fallback for `--bnbr-u: 1px` above: a custom property's value isn't
+ * parsed at declaration time, so an unconditional cq-based declaration would
+ * always win, only failing at substitution - which falls the *using* property
+ * back to inherited, not to this pixel value. `@supports` is the only real guard.
+ */
+@supports (container-type: inline-size) {
+  [data-size-mode='ratio'] > .bnbr-frame {
+    --bnbr-u: calc(100cqw / var(--bnbr-dw));
+  }
+
+  /* Whole design visible, letterboxed - `bg` shows in the margin. */
+  [data-size-mode='fit'] > .bnbr-frame {
+    --bnbr-u: min(calc(100cqw / var(--bnbr-dw)), calc(100cqh / var(--bnbr-dh)));
+  }
+
+  /* Design fills the frame; the overflowing edges are cropped. */
+  [data-size-mode='cover'] > .bnbr-frame {
+    --bnbr-u: max(calc(100cqw / var(--bnbr-dw)), calc(100cqh / var(--bnbr-dh)));
+  }
+
+  [data-size-mode='fit'] > .bnbr-frame,
+  [data-size-mode='cover'] > .bnbr-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /*
+     * Centred with `translate`, never `margin: auto`. A host reset of
+     * `* { margin: 0 }` is near-universal and unlayered, and unlayered normal
+     * declarations beat every layered one - the same failure that put this
+     * package's dialogs in the top-left corner.
+     */
+    translate: -50% -50%;
+    width: calc(var(--bnbr-u) * var(--bnbr-dw));
+    height: calc(var(--bnbr-u) * var(--bnbr-dh));
+  }
 }
 
 /*
@@ -205,7 +313,7 @@
   position: relative;
   z-index: 2;
   display: inline-block;
-  padding: 10px 20px;
+  padding: calc(var(--bnbr-u) * 10) calc(var(--bnbr-u) * 20);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -213,7 +321,7 @@
 .bnbr-link {
   position: relative;
   z-index: 2;
-  text-underline-offset: 3px;
+  text-underline-offset: calc(var(--bnbr-u) * 3);
 }
 
 .bnbr-image {
@@ -278,9 +386,9 @@
   z-index: 8;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  margin-top: -17px;
+  width: calc(var(--bnbr-u) * 34);
+  height: calc(var(--bnbr-u) * 34);
+  margin-top: calc(var(--bnbr-u) * -17);
   border-radius: 999px;
   color: #fff;
   background-color: rgb(0 0 0 / 0.32);
@@ -293,20 +401,20 @@
 }
 
 .bnbr-nav[data-dir='prev'] {
-  left: 12px;
+  left: calc(var(--bnbr-u) * 12);
 }
 
 .bnbr-nav[data-dir='next'] {
-  right: 12px;
+  right: calc(var(--bnbr-u) * 12);
 }
 
 .bnbr-dots {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: calc(var(--bnbr-u) * 14);
   z-index: 8;
   display: flex;
-  gap: 7px;
+  gap: calc(var(--bnbr-u) * 7);
   transform: translateX(-50%);
 }
 
@@ -324,25 +432,25 @@
 }
 
 .bnbr-dot[data-style='dots'] {
-  width: 9px;
-  height: 9px;
+  width: calc(var(--bnbr-u) * 9);
+  height: calc(var(--bnbr-u) * 9);
   border-radius: 999px;
 }
 
 .bnbr-dot[data-style='bars'] {
-  width: 26px;
-  height: 3px;
-  border-radius: 2px;
+  width: calc(var(--bnbr-u) * 26);
+  height: calc(var(--bnbr-u) * 3);
+  border-radius: calc(var(--bnbr-u) * 2);
 }
 
 .bnbr-counter {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  right: calc(var(--bnbr-u) * 14);
+  bottom: calc(var(--bnbr-u) * 14);
   z-index: 8;
-  padding: 3px 8px;
+  padding: calc(var(--bnbr-u) * 3) calc(var(--bnbr-u) * 8);
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(var(--bnbr-u) * 11);
   font-variant-numeric: tabular-nums;
   color: #fff;
   background-color: rgb(0 0 0 / 0.38);

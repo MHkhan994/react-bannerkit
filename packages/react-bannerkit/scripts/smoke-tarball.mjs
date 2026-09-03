@@ -56,6 +56,20 @@ const check = (name, fn) => {
 }
 
 /*
+ * A stylesheet with its comments removed, which is what every CSS check below
+ * reads.
+ *
+ * Neither stylesheet is minified - nothing in the build strips comments - and
+ * both explain themselves at length, naming the very selectors, at-rules and
+ * custom properties these checks look for. Two of the checks here were proved
+ * to pass on a build with no container query and no scale unit at all, matching
+ * only the prose that discussed them. postcss is not installed in this
+ * throwaway consumer project, so the comments come out with a regex instead of
+ * an AST walk; the effect on what counts as "present" is the same.
+ */
+const cssCode = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '')
+
+/*
  * The ESM file an export condition points at.
  *
  * 'require.resolve' picks the 'require' condition and hands back the CJS build,
@@ -200,11 +214,17 @@ check('builder entry carries the client boundary', () => {
 })
 
 check('builder.css is resolvable and fully scoped', () => {
-  const css = readFileSync(require.resolve('react-bannerkit/builder.css'), 'utf8')
+  const raw = readFileSync(require.resolve('react-bannerkit/builder.css'), 'utf8')
+  const css = cssCode(raw)
   if (!css.includes('.bnb-root')) throw new Error('no scope class')
   if (/:root\s*[,{]/.test(css)) throw new Error('declares variables on :root')
-  if (!css.includes('bnb-firewall')) throw new Error('the isolation firewall is missing')
-  return (css.length / 1024).toFixed(1) + ' kB'
+  // The '@layer bnb-firewall' statement, not just the words: the stylesheet's
+  // own header explains the firewall by name, so a substring search for it
+  // found the prose rather than the layer.
+  if (!/@layer[^;{]*\bbnb-firewall\b/.test(css)) {
+    throw new Error('the isolation firewall is missing')
+  }
+  return (raw.length / 1024).toFixed(1) + ' kB'
 })
 
 check('builder.css alone is enough to lay a banner out', () => {
@@ -215,7 +235,7 @@ check('builder.css alone is enough to lay a banner out', () => {
    * down the page instead of dividing the banner, and splitting looked like it
    * was adding blank space. Nothing errored, so nothing caught it.
    */
-  const css = readFileSync(require.resolve('react-bannerkit/builder.css'), 'utf8')
+  const css = cssCode(readFileSync(require.resolve('react-bannerkit/builder.css'), 'utf8'))
   if (!css.includes('.bnbr-panel')) throw new Error('no .bnbr-panel rules in builder.css')
   if (!/\.bnbr-panel\s*\{[^}]*position:\s*absolute/.test(css)) {
     throw new Error('builder.css does not position banner panels')
@@ -233,10 +253,68 @@ check('the editor server-renders without throwing', () => {
 })
 
 check('renderer.css resolves and is scoped', () => {
-  const css = readFileSync(require.resolve('react-bannerkit/renderer.css'), 'utf8')
+  const raw = readFileSync(require.resolve('react-bannerkit/renderer.css'), 'utf8')
+  const css = cssCode(raw)
   if (!css.includes('.bnbr')) throw new Error('no scope class')
   if (/:root\s*[,{]/.test(css)) throw new Error('declares variables on :root')
-  return (css.length / 1024).toFixed(1) + ' kB'
+  // The size a consumer pays for is the whole file, comments included.
+  return (raw.length / 1024).toFixed(1) + ' kB'
+})
+
+check('renderer.css ships the container-query scaling model', () => {
+  /*
+   * The scale-like-a-picture model lives entirely in CSS: the breakpoint
+   * choice and the per-design scale unit. A build that dropped either one
+   * would still pass every other check here and quietly ship a banner that
+   * never resizes.
+   *
+   * Both halves used to be substring searches over the raw file, and both were
+   * satisfied by the comments that explain the model - the check passed on a
+   * stylesheet whose container queries had been replaced by media queries and
+   * whose scale unit had been deleted. Reading the comment-free text and
+   * requiring the actual syntax is what makes it a check.
+   */
+  const css = cssCode(readFileSync(require.resolve('react-bannerkit/renderer.css'), 'utf8'))
+  if (!/@container\s+bnbr-root\s*\(/.test(css)) {
+    throw new Error('no @container bnbr-root query in the built CSS')
+  }
+  if (!/--bnbr-u\s*:\s*[^;}]+;/.test(css)) {
+    throw new Error('no --bnbr-u declaration in the built CSS')
+  }
+  /*
+   * And the declaration that does the scaling, as distinct from the 1px
+   * no-support default. Without a container-relative unit every design pixel
+   * is a real pixel and the banner never resizes at all.
+   */
+  if (!/--bnbr-u\s*:\s*[^;}]*cqw/.test(css)) {
+    throw new Error('--bnbr-u is never derived from the container width')
+  }
+  return 'container query + scale unit present'
+})
+
+check('a v1 template migrates to sizeMode through the published entry', () => {
+  // Exercises the migration through the tarball's own dist, which is the only
+  // way to catch a conversion that works from source but never made the build.
+  const v1 = {
+    version: 1,
+    id: 'v1-smoke',
+    name: 'V1 smoke',
+    breakpoints: {
+      laptop: { height: 420, heightMode: 'fixed', root: { kind: 'panel' } },
+      tablet: { height: 380, heightMode: 'fixed', root: { kind: 'panel' } },
+      mobile: { height: 844, heightMode: 'vh', vh: 100, root: { kind: 'panel' } },
+    },
+  }
+  const migrated = normalizeTemplate(v1)
+  if (migrated.version !== 2) throw new Error('expected version 2, got ' + migrated.version)
+  if (!migrated.breakpoints.laptop.sizeMode) throw new Error('laptop breakpoint has no sizeMode')
+  if (migrated.breakpoints.laptop.sizeMode !== 'ratio') {
+    throw new Error('heightMode: fixed did not migrate to sizeMode: ratio')
+  }
+  if (migrated.breakpoints.mobile.sizeMode !== 'fit') {
+    throw new Error('heightMode: vh did not migrate to sizeMode: fit')
+  }
+  return 'version 2, sizeMode ' + migrated.breakpoints.laptop.sizeMode
 })
 
 for (const [status, name, detail] of results) {
